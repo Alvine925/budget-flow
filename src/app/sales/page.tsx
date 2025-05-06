@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppLayout } from "@/components/app-layout";
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, TrendingUp, Filter, Users, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { Bar, Line, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend } from 'recharts';
+import { Line, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, LineChart as RechartsLineChart } from 'recharts';
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -125,7 +124,8 @@ export default function SalesPage() {
                 sales: { label: "Sales", color: "hsl(var(--chart-1))" },
                 leads: { label: "Leads", color: "hsl(var(--chart-2))" },
               }} className="h-[300px] w-full">
-                <LineChart data={salesData}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsLineChart data={salesData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis yAxisId="left" />
@@ -134,7 +134,8 @@ export default function SalesPage() {
                   <RechartsLegend content={<ChartLegendContent />} />
                   <Line yAxisId="left" type="monotone" dataKey="sales" stroke="var(--color-sales)" strokeWidth={2} />
                   <Line yAxisId="right" type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} />
-                </LineChart>
+                </RechartsLineChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

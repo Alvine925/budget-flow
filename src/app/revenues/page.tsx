@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppLayout } from "@/components/app-layout";
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, Filter, PlusCircle, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend } from 'recharts';
+import { Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, BarChart as RechartsBarChart } from 'recharts';
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -114,7 +113,8 @@ export default function RevenuesPage() {
                 serviceRevenue: { label: "Service Revenue", color: "hsl(var(--chart-2))" },
                 otherIncome: { label: "Other Income", color: "hsl(var(--chart-3))" },
               }} className="h-[350px] w-full">
-                <BarChart data={revenueData}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
@@ -123,7 +123,8 @@ export default function RevenuesPage() {
                   <Bar dataKey="productSales" stackId="a" fill="var(--color-productSales)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="serviceRevenue" stackId="a" fill="var(--color-serviceRevenue)" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="otherIncome" stackId="a" fill="var(--color-otherIncome)" radius={[0, 0, 0, 0]} />
-                </BarChart>
+                </RechartsBarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

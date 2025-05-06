@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppLayout } from "@/components/app-layout";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, BarChart, CheckCircle2, DollarSign, FileText, LineChart, PieChart, Receipt, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { Bar, Line, Pie, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, Cell } from 'recharts';
+import { Bar, Line, Pie, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend as RechartsLegend, Cell, BarChart as RechartsBarChart, PieChart as RechartsPieChart, LineChart as RechartsLineChart } from 'recharts';
 import Link from "next/link";
 
 const chartDataIncomeExpense = [
@@ -97,7 +96,8 @@ export default function DashboardPage() {
                   income: { label: "Income", color: "hsl(var(--chart-1))" },
                   expenses: { label: "Expenses", color: "hsl(var(--chart-2))" },
                 }} className="h-[300px] w-full">
-                  <BarChart data={chartDataIncomeExpense}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart data={chartDataIncomeExpense}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -105,7 +105,8 @@ export default function DashboardPage() {
                     <RechartsLegend content={<ChartLegendContent />} />
                     <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -117,7 +118,8 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={{}} className="h-[300px] w-full">
-                  <PieChart>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
                     <Pie
                       data={chartDataCategorySpending}
                       cx="50%"
@@ -134,7 +136,8 @@ export default function DashboardPage() {
                     </Pie>
                     <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
                     <RechartsLegend content={<ChartLegendContent />} />
-                  </PieChart>
+                  </RechartsPieChart>
+                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
