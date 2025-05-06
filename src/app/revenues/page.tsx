@@ -113,7 +113,6 @@ export default function RevenuesPage() {
                 serviceRevenue: { label: "Service Revenue", color: "hsl(var(--chart-2))" },
                 otherIncome: { label: "Other Income", color: "hsl(var(--chart-3))" },
               }} className="h-[350px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
                 <RechartsBarChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -124,7 +123,6 @@ export default function RevenuesPage() {
                   <Bar dataKey="serviceRevenue" stackId="a" fill="var(--color-serviceRevenue)" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="otherIncome" stackId="a" fill="var(--color-otherIncome)" radius={[0, 0, 0, 0]} />
                 </RechartsBarChart>
-              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

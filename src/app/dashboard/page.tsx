@@ -96,17 +96,15 @@ export default function DashboardPage() {
                   income: { label: "Income", color: "hsl(var(--chart-1))" },
                   expenses: { label: "Expenses", color: "hsl(var(--chart-2))" },
                 }} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart data={chartDataIncomeExpense}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <RechartsTooltip content={<ChartTooltipContent />} />
-                    <RechartsLegend content={<ChartLegendContent />} />
-                    <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />
-                  </RechartsBarChart>
-                </ResponsiveContainer>
+                <RechartsBarChart data={chartDataIncomeExpense}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip content={<ChartTooltipContent />} />
+                  <RechartsLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />
+                </RechartsBarChart>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -118,26 +116,24 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={{}} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={chartDataCategorySpending}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {chartDataCategorySpending.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                    <RechartsLegend content={<ChartLegendContent />} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
+                <RechartsPieChart>
+                  <Pie
+                    data={chartDataCategorySpending}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartDataCategorySpending.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
+                  <RechartsLegend content={<ChartLegendContent />} />
+                </RechartsPieChart>
               </ChartContainer>
             </CardContent>
           </Card>

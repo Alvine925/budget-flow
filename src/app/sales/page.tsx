@@ -124,7 +124,6 @@ export default function SalesPage() {
                 sales: { label: "Sales", color: "hsl(var(--chart-1))" },
                 leads: { label: "Leads", color: "hsl(var(--chart-2))" },
               }} className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart data={salesData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -135,7 +134,6 @@ export default function SalesPage() {
                   <Line yAxisId="left" type="monotone" dataKey="sales" stroke="var(--color-sales)" strokeWidth={2} />
                   <Line yAxisId="right" type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} />
                 </RechartsLineChart>
-              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
