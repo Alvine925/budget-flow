@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppLayout } from "@/components/app-layout";
@@ -96,7 +97,6 @@ export default function DashboardPage() {
                   income: { label: "Income", color: "hsl(var(--chart-1))" },
                   expenses: { label: "Expenses", color: "hsl(var(--chart-2))" },
                 }} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartDataIncomeExpense}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
@@ -106,7 +106,6 @@ export default function DashboardPage() {
                     <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -118,7 +117,6 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ChartContainer config={{}} className="h-[300px] w-full">
-                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={chartDataCategorySpending}
@@ -137,7 +135,6 @@ export default function DashboardPage() {
                     <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
                     <RechartsLegend content={<ChartLegendContent />} />
                   </PieChart>
-                </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
