@@ -55,6 +55,7 @@ type ClientFormValues = z.infer<typeof clientFormSchema>;
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Separate state for form submission
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all-clients");
@@ -104,19 +105,27 @@ export default function ClientsPage() {
     if (clientToEdit && isEditDialogOpen) {
       form.reset({
         label: clientToEdit.label,
-        contactPerson: clientToEdit.contactPerson,
-        email: clientToEdit.email,
-        phone: clientToEdit.phone,
-        address: clientToEdit.address,
-        category: clientToEdit.category,
+        contactPerson: clientToEdit.contactPerson || "",
+        email: clientToEdit.email || "",
+        phone: clientToEdit.phone || "",
+        address: clientToEdit.address || "",
+        category: clientToEdit.category || "",
       });
     } else if (!isEditDialogOpen) {
+      // Reset form when closing edit dialog or switching to add tab
       form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
     }
   }, [clientToEdit, isEditDialogOpen, form]);
 
+  // Reset form when switching to 'add-client' tab if not editing
+  useEffect(() => {
+    if (activeTab === 'add-client' && !clientToEdit) {
+      form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
+    }
+  }, [activeTab, clientToEdit, form]);
+
   async function onSubmit(data: ClientFormValues) {
-    setIsLoading(true);
+    setIsSubmitting(true); // Indicate submission is in progress
     try {
         if (clientToEdit) {
             // --- Editing Existing Client ---
@@ -124,8 +133,8 @@ export default function ClientsPage() {
                 .from('clients')
                 .update({
                     label: data.label,
-                    contactPerson: data.contactPerson,
-                    email: data.email || null, // Use null for empty optional fields in DB
+                    contactPerson: data.contactPerson || null, // Use null for empty optional fields in DB
+                    email: data.email || null,
                     phone: data.phone || null,
                     address: data.address || null,
                     category: data.category || null,
@@ -138,10 +147,13 @@ export default function ClientsPage() {
             if (error) throw error;
 
             if (updatedData) {
-                setClients(clients.map(c => c.id === clientToEdit.id ? { ...updatedData, value: updatedData.id } as Client : c));
+                 // Add 'value' field matching 'id' for consistency
+                const formattedUpdatedData = { ...updatedData, value: updatedData.id } as Client;
+                setClients(clients.map(c => c.id === clientToEdit.id ? formattedUpdatedData : c));
                 toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
                 setIsEditDialogOpen(false);
                 setClientToEdit(null);
+                // Form reset is handled by the useEffect for isEditDialogOpen
             }
         } else {
             // --- Adding New Client ---
@@ -152,9 +164,9 @@ export default function ClientsPage() {
                 phone: data.phone || null,
                 address: data.address || null,
                 category: data.category || null,
-                // Default values for fields not in the form
-                totalRevenue: 0,
-                status: data.category === "New Lead" ? "Lead" : "Active",
+                // Default values for fields not in the form (align with DB schema)
+                // totalRevenue: 0, // Ensure this matches your DB schema (e.g., has a default)
+                status: data.category === "New Lead" ? "Lead" : "Active", // Ensure this matches your DB schema
                 // avatarUrl can be handled separately if needed
             };
 
@@ -169,10 +181,10 @@ export default function ClientsPage() {
             if (insertedData) {
                  // Add 'value' field matching 'id' for consistency
                 const formattedInsertedData = { ...insertedData, value: insertedData.id } as Client;
-                setClients(prevClients => [...prevClients, formattedInsertedData]);
+                setClients(prevClients => [...prevClients, formattedInsertedData]); // Update local state
                 toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
-                form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form
-                setActiveTab("all-clients"); // Switch back to the list view
+                form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form specifically
+                setActiveTab("all-clients"); // Optionally switch back to the list view after adding
             }
         }
     } catch (error: any) {
@@ -183,13 +195,13 @@ export default function ClientsPage() {
             variant: "destructive",
         });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false); // Submission finished
     }
   }
 
   const handleDeleteClient = async (clientId: string, clientName: string) => {
     // Optional: Add a confirmation dialog before deleting
-    setIsLoading(true);
+    setIsLoading(true); // Use general loading for delete as it affects the list
     try {
       const { error } = await supabase
         .from('clients')
@@ -214,10 +226,10 @@ export default function ClientsPage() {
 
   const openEditDialog = (client: Client) => {
     setClientToEdit(client);
-    setIsEditDialogOpen(true);
+    setIsEditDialogOpen(true); // This will trigger the useEffect to populate the form
   };
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status?: string | null) => {
     switch (status?.toLowerCase()) {
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
@@ -226,7 +238,7 @@ export default function ClientsPage() {
       case "inactive":
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
       default:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"; // Default or unknown status
     }
   };
 
@@ -331,7 +343,7 @@ export default function ClientsPage() {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                              <AvatarImage src={client.avatarUrl} alt={client.label} data-ai-hint="company logo person" />
+                              <AvatarImage src={client.avatarUrl ?? undefined} alt={client.label} data-ai-hint="company logo person" />
                               <AvatarFallback>{client.label.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
                             </Avatar>
                             {client.label}
@@ -341,7 +353,7 @@ export default function ClientsPage() {
                         <TableCell><a href={`tel:${client.phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {client.phone || 'N/A'}</a></TableCell>
                         <TableCell><Badge variant="outline">{client.category || 'N/A'}</Badge></TableCell>
                         <TableCell className="text-right">${(client.totalRevenue || 0).toFixed(2)}</TableCell>
-                        <TableCell><Badge className={getStatusBadgeVariant(client.status || '')}>{client.status || 'N/A'}</Badge></TableCell>
+                        <TableCell><Badge className={getStatusBadgeVariant(client.status)}>{client.status || 'N/A'}</Badge></TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -424,8 +436,8 @@ export default function ClientsPage() {
                             </Select><FormMessage /></FormItem>
                     )}/>
                     <div className="flex justify-end pt-4">
-                      <Button type="submit" disabled={isLoading}>
-                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
+                      <Button type="submit" disabled={isSubmitting}>
+                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
                          Add Client
                        </Button>
                     </div>
@@ -444,6 +456,7 @@ export default function ClientsPage() {
               <DialogDescription>Update the client's details.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
+              {/* Point the edit dialog form to the same onSubmit handler */}
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                  <FormField control={form.control} name="label" render={({ field }) => (
                     <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -472,9 +485,9 @@ export default function ClientsPage() {
                         </Select><FormMessage /></FormItem>
                 )}/>
                 <DialogFooter className="pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isLoading}>Cancel</Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
                     Save Changes
                   </Button>
                 </DialogFooter>

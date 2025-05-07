@@ -140,6 +140,8 @@ export default function ItemsPage() {
                 setItems(items.map(i => i.id === editingItem.id ? { ...updatedData } as Item : i));
                 toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
             }
+            setIsDialogOpen(false);
+            setEditingItem(null);
         } else {
             // --- Adding New Item ---
             const { data: insertedData, error } = await supabase
@@ -152,11 +154,10 @@ export default function ItemsPage() {
             if (insertedData) {
                 setItems(prevItems => [...prevItems, insertedData as Item]);
                 toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
+                setIsDialogOpen(false); // Close dialog on success
+                form.reset(); // Reset form only after successful ADDITION
             }
         }
-        setIsDialogOpen(false);
-        setEditingItem(null);
-        form.reset(); // Reset form after successful operation
     } catch (error: any) {
         console.error("Error saving item:", error);
         toast({
@@ -272,7 +273,7 @@ export default function ItemsPage() {
                     <TableCell className="text-right">{item.salePrice ? `$${item.salePrice.toFixed(2)}` : "N/A"}</TableCell>
                     <TableCell className="text-right">
                       {item.trackInventory ? (
-                        <span className={item.currentStock !== undefined && item.lowStockThreshold !== undefined && (item.currentStock || 0) <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
+                        <span className={item.currentStock !== undefined && item.currentStock !== null && item.lowStockThreshold !== undefined && item.lowStockThreshold !== null && item.currentStock <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
                             {item.currentStock ?? 0}
                         </span>
                        ) : "N/A"}
@@ -311,7 +312,7 @@ export default function ItemsPage() {
              )}
             {!isLoading && items.length === 0 && (
               <div className="text-center py-10 text-muted-foreground">
-                No items or services found.
+                No items or services found. Add one using the button above.
               </div>
             )}
           </CardContent>
@@ -367,10 +368,10 @@ export default function ItemsPage() {
                 {itemType === "stock_item" && trackInventory && (
                     <div className="grid grid-cols-2 gap-4 mt-4 border-t pt-4">
                         <FormField control={form.control} name="currentStock" render={({ field }) => (
-                            <FormItem><FormLabel>Current Stock (Optional)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Current Stock</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
                         <FormField control={form.control} name="lowStockThreshold" render={({ field }) => (
-                            <FormItem><FormLabel>Low Stock Threshold (Optional)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Low Stock Threshold</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
                     </div>
                 )}
