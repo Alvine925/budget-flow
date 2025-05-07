@@ -18,9 +18,13 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // If Supabase is not configured, proceed without session handling
-    console.warn("Supabase environment variables not set, skipping auth middleware.");
+  // If Supabase is not configured OR placeholder values are still present, proceed without session handling
+  if (!supabaseUrl || supabaseUrl === "YOUR_SUPABASE_URL" || !supabaseAnonKey || supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
+    if (!supabaseUrl || !supabaseAnonKey) {
+       console.warn("Supabase environment variables not set, skipping auth middleware.");
+    } else {
+        console.warn("Supabase environment variables are set to placeholders, skipping auth middleware. Please update your .env file.");
+    }
     return response;
   }
 

@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
  * Reads connection details from environment variables. Requires cookies() from next/headers.
  *
  * @returns {SupabaseClient} A Supabase client instance configured for server-side use.
- * @throws {Error} If Supabase URL or Anon Key environment variables are not set.
+ * @throws {Error} If Supabase URL or Anon Key environment variables are not set or are invalid placeholders.
  */
 export function createClient() {
   const cookieStore = cookies();
@@ -17,8 +17,16 @@ export function createClient() {
   if (!supabaseUrl) {
     throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL");
   }
+   if (supabaseUrl === "YOUR_SUPABASE_URL") {
+    console.warn("Supabase URL is set to the placeholder value. Please update your .env file with your actual Supabase project URL.");
+    // Allow proceeding with placeholder but warn.
+  }
   if (!supabaseAnonKey) {
     throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
+    console.warn("Supabase Anon Key is set to the placeholder value. Please update your .env file with your actual Supabase anonymous key.");
+    // Allow proceeding with placeholder but warn.
   }
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
