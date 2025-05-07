@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Edit, Trash2, Filter, Users, MoreHorizontal, Mail, Phone, DollarSign, Save } from "lucide-react";
-import React, { useState, useEffect } from "react"; // Import useEffect
+import { PlusCircle, Edit, Trash2, Filter, Users, MoreHorizontal, Mail, Phone, DollarSign, Save, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -37,62 +37,60 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-// Import mock data
-import { initialClients as mockClientsData, clientCategories, type Client } from "@/data/mockData";
-
+// Import Client interface and categories from mockData, but not the data itself
+import { clientCategories, type Client } from "@/data/mockData";
+import { createClient } from "@/lib/supabase/client"; // Import Supabase client
 
 const clientFormSchema = z.object({
-  label: z.string().min(1, "Client name is required."), // Use 'label' for name consistency
+  label: z.string().min(1, "Client name is required."),
   contactPerson: z.string().optional(),
   email: z.string().email("Invalid email address.").optional().or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
-  category: z.string().optional(), // e.g., "Key Account", "New Lead", "Past Client"
+  category: z.string().optional(),
 });
 
-// Adjust type to match Zod schema if needed, or keep Client interface separate
 type ClientFormValues = z.infer<typeof clientFormSchema>;
 
-// localStorage key
-const LOCAL_STORAGE_KEY_CLIENTS = 'budgetflow-clients';
-
 export default function ClientsPage() {
-  // Initialize with mock data, will be updated by useEffect from localStorage
-  const [clients, setClients] = useState<Client[]>(mockClientsData); 
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all-clients");
   const { toast } = useToast();
+  const supabase = createClient();
 
-  // Load clients from localStorage on mount (client-side only)
+  // Fetch clients from Supabase on mount
   useEffect(() => {
-    try {
-      const storedClients = localStorage.getItem(LOCAL_STORAGE_KEY_CLIENTS);
-      if (storedClients) {
-        setClients(JSON.parse(storedClients));
-      } else {
-        // Optional: Seed localStorage if empty
-        localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(mockClientsData));
-        setClients(mockClientsData); // Ensure state matches if seeded
+    const fetchClients = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('clients') // Assume 'clients' table exists
+          .select('*')
+          .order('label', { ascending: true }); // Adjust columns as needed
+
+        if (error) {
+          throw error;
+        }
+        // Map Supabase data to Client interface if needed, ensure 'value' is set
+        const formattedData = data.map(c => ({ ...c, value: c.id, label: c.label })) as Client[];
+        setClients(formattedData);
+      } catch (error: any) {
+        console.error("Error loading clients from Supabase:", error);
+        toast({
+          title: "Error Loading Clients",
+          description: error.message || "Could not fetch client data.",
+          variant: "destructive",
+        });
+        setClients([]); // Set to empty array on error
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading clients from localStorage:", error);
-      // Fallback to mock data if error
-      setClients(mockClientsData);
-      localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(mockClientsData));
-    }
-  }, []); // Empty dependency array ensures it runs only once on mount
-
-  // Save clients to localStorage whenever the state changes
-  useEffect(() => {
-    try {
-        // Convert clients state to JSON and save
-        localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(clients));
-    } catch (error) {
-      console.error("Error saving clients to localStorage:", error);
-    }
-  }, [clients]); // Run whenever clients state changes
-
+    };
+    fetchClients();
+  }, [toast, supabase]); // Add supabase and toast to dependency array
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -104,62 +102,114 @@ export default function ClientsPage() {
   // Effect for populating the EDIT form
   React.useEffect(() => {
     if (clientToEdit && isEditDialogOpen) {
-      // Map Client fields to ClientFormValues for the form
       form.reset({
         label: clientToEdit.label,
         contactPerson: clientToEdit.contactPerson,
         email: clientToEdit.email,
-        phone: clientToEdit.phone, // Use clientToEdit.phone directly
+        phone: clientToEdit.phone,
         address: clientToEdit.address,
         category: clientToEdit.category,
       });
     } else if (!isEditDialogOpen) {
-      // Reset form when closing edit dialog or for the 'Add New' tab
       form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
     }
   }, [clientToEdit, isEditDialogOpen, form]);
 
+  async function onSubmit(data: ClientFormValues) {
+    setIsLoading(true);
+    try {
+        if (clientToEdit) {
+            // --- Editing Existing Client ---
+            const { data: updatedData, error } = await supabase
+                .from('clients')
+                .update({
+                    label: data.label,
+                    contactPerson: data.contactPerson,
+                    email: data.email || null, // Use null for empty optional fields in DB
+                    phone: data.phone || null,
+                    address: data.address || null,
+                    category: data.category || null,
+                    // Update other relevant fields if needed
+                })
+                .eq('id', clientToEdit.id)
+                .select()
+                .single(); // Get the updated record back
 
-  function onSubmit(data: ClientFormValues) {
-    if (clientToEdit) {
-      // --- Editing Existing Client ---
-      setClients(clients.map(c => c.id === clientToEdit.id ? {
-          ...clientToEdit, // Spread existing full client data
-          label: data.label, // Update with form values
-          contactPerson: data.contactPerson,
-          email: data.email || '', // Ensure email is string or empty string
-          phone: data.phone,
-          address: data.address || '', // Ensure address is string or empty string
-          category: data.category,
-         } : c));
-      toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
-      setIsEditDialogOpen(false); // Close edit dialog
-      setClientToEdit(null);
-    } else {
-      // --- Adding New Client ---
-      const newClientId = `client_${Date.now()}`;
-      const newClient: Client = {
-        id: newClientId,
-        value: newClientId, // Use the same ID for value
-        label: data.label, // Use 'label' from form
-        contactPerson: data.contactPerson,
-        email: data.email || '',
-        phone: data.phone,
-        address: data.address || '',
-        category: data.category,
-        totalRevenue: 0,
-        status: data.category === "New Lead" ? "Lead" : "Active" // Basic status logic
-      };
-      setClients(prevClients => [...prevClients, newClient]); // Use functional update for safety
-      toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
-      form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form
-      setActiveTab("all-clients"); // Switch back to the list view
+            if (error) throw error;
+
+            if (updatedData) {
+                setClients(clients.map(c => c.id === clientToEdit.id ? { ...updatedData, value: updatedData.id } as Client : c));
+                toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
+                setIsEditDialogOpen(false);
+                setClientToEdit(null);
+            }
+        } else {
+            // --- Adding New Client ---
+            const newClientData = {
+                label: data.label,
+                contactPerson: data.contactPerson || null,
+                email: data.email || null,
+                phone: data.phone || null,
+                address: data.address || null,
+                category: data.category || null,
+                // Default values for fields not in the form
+                totalRevenue: 0,
+                status: data.category === "New Lead" ? "Lead" : "Active",
+                // avatarUrl can be handled separately if needed
+            };
+
+            const { data: insertedData, error } = await supabase
+                .from('clients')
+                .insert(newClientData)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (insertedData) {
+                 // Add 'value' field matching 'id' for consistency
+                const formattedInsertedData = { ...insertedData, value: insertedData.id } as Client;
+                setClients(prevClients => [...prevClients, formattedInsertedData]);
+                toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
+                form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form
+                setActiveTab("all-clients"); // Switch back to the list view
+            }
+        }
+    } catch (error: any) {
+        console.error("Error saving client:", error);
+        toast({
+            title: "Error Saving Client",
+            description: error.message || "Could not save client data.",
+            variant: "destructive",
+        });
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  const handleDeleteClient = (clientId: string) => {
-    setClients(clients.filter(c => c.id !== clientId));
-    toast({ title: "Client Deleted", description: "Client has been deleted.", variant: "destructive" });
+  const handleDeleteClient = async (clientId: string, clientName: string) => {
+    // Optional: Add a confirmation dialog before deleting
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      setClients(clients.filter(c => c.id !== clientId));
+      toast({ title: "Client Deleted", description: `Client "${clientName}" has been deleted.`, variant: "destructive" });
+    } catch (error: any) {
+      console.error("Error deleting client:", error);
+      toast({
+        title: "Error Deleting Client",
+        description: error.message || "Could not delete client.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openEditDialog = (client: Client) => {
@@ -168,7 +218,7 @@ export default function ClientsPage() {
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    switch (status?.toLowerCase()) { // Add null check for status
+    switch (status?.toLowerCase()) {
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "lead":
@@ -211,31 +261,32 @@ export default function ClientsPage() {
                         <DropdownMenuCheckboxItem>Inactive</DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                     </DropdownMenu>
-                    {/* Removed Add Client Button here */}
                 </div>
             )}
           </div>
 
           <TabsContent value="all-clients">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {/* Summary Cards - Could fetch aggregate data from Supabase */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{clients.length}</div>
-                  <p className="text-xs text-muted-foreground">{clients.filter(c => c.status === 'Active').length} active</p>
+                  <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : clients.length}</div>
+                   {!isLoading && <p className="text-xs text-muted-foreground">{clients.filter(c => c.status === 'Active').length} active</p>}
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Client Revenue (YTD)</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0).toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">Across all clients</p>
+                  {/* Aggregate revenue fetch needed */}
+                  <div className="text-2xl font-bold">${isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0).toFixed(2)}</div>
+                  {!isLoading && <p className="text-xs text-muted-foreground">Across all clients</p>}
                 </CardContent>
               </Card>
               <Card>
@@ -244,8 +295,8 @@ export default function ClientsPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{clients.filter(c => c.status === 'Lead').length}</div>
-                  <p className="text-xs text-muted-foreground">Potential new business</p>
+                   <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : clients.filter(c => c.status === 'Lead').length}</div>
+                  {!isLoading && <p className="text-xs text-muted-foreground">Potential new business</p>}
                 </CardContent>
               </Card>
             </div>
@@ -256,6 +307,12 @@ export default function ClientsPage() {
                 <CardDescription>Manage your client relationships and information.</CardDescription>
               </CardHeader>
               <CardContent>
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="ml-2">Loading clients...</span>
+                    </div>
+                ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -281,10 +338,10 @@ export default function ClientsPage() {
                           </div>
                         </TableCell>
                         <TableCell><a href={`mailto:${client.email}`} className="text-primary hover:underline flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {client.email || 'N/A'}</a></TableCell>
-                        <TableCell><a href={`tel:${client.phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {client.phone || 'N/A'}</a></TableCell> {/* Use client.phone */}
+                        <TableCell><a href={`tel:${client.phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {client.phone || 'N/A'}</a></TableCell>
                         <TableCell><Badge variant="outline">{client.category || 'N/A'}</Badge></TableCell>
                         <TableCell className="text-right">${(client.totalRevenue || 0).toFixed(2)}</TableCell>
-                        <TableCell><Badge className={getStatusBadgeVariant(client.status || '')}>{client.status || 'N/A'}</Badge></TableCell> {/* Add null check for status */}
+                        <TableCell><Badge className={getStatusBadgeVariant(client.status || '')}>{client.status || 'N/A'}</Badge></TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -299,17 +356,19 @@ export default function ClientsPage() {
                                 <Edit className="mr-2 h-4 w-4" /> Edit Client
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/invoices/new?client=${client.value}`}> {/* Use client.value */}
+                                {/* Ensure client.value exists and is correct ID */}
+                                <Link href={`/invoices/new?client=${client.value}`}>
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/quotations/new?client=${client.value}`}> {/* Use client.value */}
+                                {/* Ensure client.value exists and is correct ID */}
+                                <Link href={`/quotations/new?client=${client.value}`}>
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Quotation
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={() => handleDeleteClient(client.id)}>
+                              <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={() => handleDeleteClient(client.id, client.label)}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Client
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -319,7 +378,8 @@ export default function ClientsPage() {
                     ))}
                   </TableBody>
                 </Table>
-                {clients.length === 0 && (
+                 )}
+                {!isLoading && clients.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     No clients found. Add one using the 'Add New Client' tab.
                   </div>
@@ -336,9 +396,8 @@ export default function ClientsPage() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  {/* Use onSubmit directly here */}
                   <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-                     <FormField control={form.control} name="label" render={({ field }) => ( // Use 'label' for name field
+                     <FormField control={form.control} name="label" render={({ field }) => (
                         <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} placeholder="Acme Corporation"/></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="contactPerson" render={({ field }) => (
@@ -365,7 +424,10 @@ export default function ClientsPage() {
                             </Select><FormMessage /></FormItem>
                     )}/>
                     <div className="flex justify-end pt-4">
-                      <Button type="submit"><Save className="mr-2 h-4 w-4"/> Add Client</Button>
+                      <Button type="submit" disabled={isLoading}>
+                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
+                         Add Client
+                       </Button>
                     </div>
                   </form>
                 </Form>
@@ -374,7 +436,7 @@ export default function ClientsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Dialog for Editing - remains largely the same, ensure field names match */}
+        {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -382,10 +444,8 @@ export default function ClientsPage() {
               <DialogDescription>Update the client's details.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              {/* Ensure this form also uses onSubmit */}
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-                {/* FormFields are identical to the Add New form */}
-                 <FormField control={form.control} name="label" render={({ field }) => ( // Use 'label'
+                 <FormField control={form.control} name="label" render={({ field }) => (
                     <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <FormField control={form.control} name="contactPerson" render={({ field }) => (
@@ -412,8 +472,11 @@ export default function ClientsPage() {
                         </Select><FormMessage /></FormItem>
                 )}/>
                 <DialogFooter className="pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit"><Save className="mr-2 h-4 w-4"/> Save Changes</Button>
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isLoading}>Cancel</Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
+                    Save Changes
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>

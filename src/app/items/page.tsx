@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Edit, Trash2, Filter, Package, Briefcase, MoreHorizontal, DollarSign } from "lucide-react";
-import React, { useState, useEffect } from "react"; // Import useEffect
+import { PlusCircle, Edit, Trash2, Filter, Package, Briefcase, MoreHorizontal, DollarSign, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -36,8 +36,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-// Import mock data
-import { availableItems as mockItemsData } from "@/data/mockData"; // Rename import
+// Import Item interface but not the mock data
+import type { Item } from "@/data/mockData";
+import { createClient } from "@/lib/supabase/client"; // Import Supabase client
 
 const itemFormSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -53,68 +54,49 @@ const itemFormSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
 
-interface Item extends ItemFormValues {
-  id: string;
-}
-
-// Use mockItemsData for initial state / fallback
-const initialItems: Item[] = mockItemsData.map(item => ({
-  ...item,
-  id: item.id || item.value, // Ensure ID exists
-  name: item.label,
-  salePrice: item.price,
-  type: item.type || "service", // Provide default type if missing
-  trackInventory: item.trackInventory || false,
-}));
-
-// localStorage key
-const LOCAL_STORAGE_KEY_ITEMS = 'budgetflow-items';
-
+// No longer need initialItems with mock data
 
 export default function ItemsPage() {
-  // Initialize with initialItems, will be updated by useEffect from localStorage
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const [items, setItems] = useState<Item[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const { toast } = useToast();
+  const supabase = createClient();
 
-   // Load items from localStorage on mount (client-side only)
+   // Load items from Supabase on mount
    useEffect(() => {
+    const fetchItems = async () => {
+      setIsLoading(true);
       try {
-        const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY_ITEMS);
-        if (storedItems) {
-          setItems(JSON.parse(storedItems));
-        } else {
-          // Optional: Seed localStorage if empty
-          localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(initialItems));
-          setItems(initialItems); // Ensure state matches if seeded
-        }
-      } catch (error) {
-        console.error("Error loading items from localStorage:", error);
-        // Fallback to mock data if error
-        setItems(initialItems);
-        localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(initialItems));
-      }
-    }, []); // Empty dependency array ensures it runs only once on mount
+        const { data, error } = await supabase
+          .from('items') // Assume 'items' table exists
+          .select('*')
+          .order('name', { ascending: true }); // Adjust columns as needed
 
-    // Save items to localStorage whenever the state changes
-    useEffect(() => {
-      try {
-          // Convert items state to JSON and save
-          localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(items));
-      } catch (error) {
-         console.error("Error saving items to localStorage:", error);
+        if (error) throw error;
+        setItems(data as Item[]); // Assuming Supabase data structure matches Item interface
+      } catch (error: any) {
+        console.error("Error loading items from Supabase:", error);
+        toast({
+          title: "Error Loading Items",
+          description: error.message || "Could not fetch item data.",
+          variant: "destructive",
+        });
+        setItems([]); // Set to empty array on error
+      } finally {
+        setIsLoading(false);
       }
-    }, [items]); // Run whenever items state changes
-
+    };
+    fetchItems();
+  }, [supabase, toast]); // Add dependencies
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
   });
-  
+
   const itemType = form.watch("type");
   const trackInventory = form.watch("trackInventory");
-
 
   React.useEffect(() => {
     if (editingItem) {
@@ -124,28 +106,94 @@ export default function ItemsPage() {
     }
   }, [editingItem, form, isDialogOpen]);
 
-  function onSubmit(data: ItemFormValues) {
-    if (!data.trackInventory) {
-        data.currentStock = undefined;
-        data.lowStockThreshold = undefined;
+  async function onSubmit(data: ItemFormValues) {
+    setIsLoading(true);
+    try {
+        const itemData = { ...data }; // Copy data to avoid modifying original form values
+        if (!itemData.trackInventory) {
+            itemData.currentStock = undefined;
+            itemData.lowStockThreshold = undefined;
+        }
+
+        // Prepare data for Supabase (handle undefined -> null)
+        const supabaseData = {
+            ...itemData,
+            salePrice: itemData.salePrice ?? null,
+            purchasePrice: itemData.purchasePrice ?? null,
+            currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
+            lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
+            sku: itemData.sku || null,
+            description: itemData.description || null,
+        };
+
+        if (editingItem) {
+            // --- Editing Existing Item ---
+            const { data: updatedData, error } = await supabase
+                .from('items')
+                .update(supabaseData)
+                .eq('id', editingItem.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            if (updatedData) {
+                setItems(items.map(i => i.id === editingItem.id ? { ...updatedData } as Item : i));
+                toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
+            }
+        } else {
+            // --- Adding New Item ---
+            const { data: insertedData, error } = await supabase
+                .from('items')
+                .insert(supabaseData)
+                .select()
+                .single();
+
+            if (error) throw error;
+            if (insertedData) {
+                setItems(prevItems => [...prevItems, insertedData as Item]);
+                toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
+            }
+        }
+        setIsDialogOpen(false);
+        setEditingItem(null);
+        form.reset(); // Reset form after successful operation
+    } catch (error: any) {
+        console.error("Error saving item:", error);
+        toast({
+            title: "Error Saving Item",
+            description: error.message || "Could not save item data.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
     }
-    if (editingItem) {
-      setItems(items.map(i => i.id === editingItem.id ? { ...editingItem, ...data } : i));
-      toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
-    } else {
-      const newItem: Item = { id: `item_${Date.now()}`, ...data };
-      setItems([...items, newItem]);
-      toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
-    }
-    setIsDialogOpen(false);
-    setEditingItem(null);
   }
 
-  const handleDeleteItem = (itemId: string) => {
-    setItems(items.filter(i => i.id !== itemId));
-    toast({ title: "Item Deleted", description: "Item has been deleted.", variant: "destructive" });
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    // Optional: Add confirmation dialog
+    setIsLoading(true);
+    try {
+        const { error } = await supabase
+            .from('items')
+            .delete()
+            .eq('id', itemId);
+
+        if (error) throw error;
+
+        setItems(items.filter(i => i.id !== itemId));
+        toast({ title: "Item Deleted", description: `Item "${itemName}" has been deleted.`, variant: "destructive" });
+    } catch (error: any) {
+        console.error("Error deleting item:", error);
+        toast({
+            title: "Error Deleting Item",
+            description: error.message || "Could not delete item.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
-  
+
   const openEditDialog = (item: Item) => {
     setEditingItem(item);
     setIsDialogOpen(true);
@@ -153,6 +201,7 @@ export default function ItemsPage() {
 
   const openNewDialog = () => {
     setEditingItem(null);
+    form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 }); // Ensure form is reset
     setIsDialogOpen(true);
   };
 
@@ -192,6 +241,12 @@ export default function ItemsPage() {
             <CardDescription>Manage your product catalog and service offerings.</CardDescription>
           </CardHeader>
           <CardContent>
+             {isLoading ? (
+                 <div className="flex justify-center items-center py-10">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <span className="ml-2">Loading items...</span>
+                 </div>
+             ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -217,7 +272,7 @@ export default function ItemsPage() {
                     <TableCell className="text-right">{item.salePrice ? `$${item.salePrice.toFixed(2)}` : "N/A"}</TableCell>
                     <TableCell className="text-right">
                       {item.trackInventory ? (
-                        <span className={item.currentStock !== undefined && item.lowStockThreshold !== undefined && item.currentStock <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
+                        <span className={item.currentStock !== undefined && item.lowStockThreshold !== undefined && (item.currentStock || 0) <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
                             {item.currentStock ?? 0}
                         </span>
                        ) : "N/A"}
@@ -243,7 +298,7 @@ export default function ItemsPage() {
                              </DropdownMenuItem>
                           )}
                            <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={() => handleDeleteItem(item.id)}>
+                          <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={() => handleDeleteItem(item.id, item.name)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -253,14 +308,15 @@ export default function ItemsPage() {
                 ))}
               </TableBody>
             </Table>
-            {items.length === 0 && (
+             )}
+            {!isLoading && items.length === 0 && (
               <div className="text-center py-10 text-muted-foreground">
                 No items or services found.
               </div>
             )}
           </CardContent>
         </Card>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -319,8 +375,11 @@ export default function ItemsPage() {
                     </div>
                 )}
                 <DialogFooter className="pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit">{editingItem ? "Save Changes" : "Add Item/Service"}</Button>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>Cancel</Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {editingItem ? "Save Changes" : "Add Item/Service"}
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
