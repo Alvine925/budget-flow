@@ -1,4 +1,6 @@
 
+"use client";
+
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +12,9 @@ const settingsSections = [
   { title: "Tax Settings", description: "Configure tax rates, regions, and calculation methods.", icon: Calculator, href: "/settings/tax" },
   { title: "Currency Converter", description: "Set up default and additional currencies, manage exchange rates.", icon: Coins, href: "/settings/currency" },
   { title: "User Management", description: "Manage users, roles, and permissions within the application.", icon: UserCog, href: "/settings/users" },
-  { title: "Appearance", description: "Customize the look and feel of BudgetFlow.", icon: Palette, href: "/settings/appearance", comingSoon: true },
-  { title: "Security", description: "Manage your account security, 2FA, and active sessions.", icon: ShieldCheck, href: "/settings/security", comingSoon: true },
-  { title: "Notifications", description: "Configure your email and in-app notification preferences.", icon: Bell, href: "/settings/notifications", comingSoon: true },
+  { title: "Appearance", description: "Customize the look and feel of BudgetFlow.", icon: Palette, href: "/settings/appearance" },
+  { title: "Security", description: "Manage your account security, 2FA, and active sessions.", icon: ShieldCheck, href: "/settings/security" },
+  { title: "Notifications", description: "Configure your email and in-app notification preferences.", icon: Bell, href: "/settings/notifications" },
 ];
 
 export default function SettingsPage() {

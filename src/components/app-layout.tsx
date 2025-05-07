@@ -24,7 +24,10 @@ import {
   UserCog,
   CreditCard,
   ShoppingCart,
-  Wallet
+  Wallet,
+  Palette,
+  ShieldCheck,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,8 +58,11 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   label: string;
-  subItems?: NavItem[];
-  group?: string;
+  // subItems are not directly rendered in the sidebar by this component,
+  // but can be used for structuring or future enhancements.
+  // The /settings page acts as a hub for settings sub-pages.
+  subItems?: NavItem[]; 
+  group: string;
 }
 
 const navItems: NavItem[] = [
@@ -66,19 +72,29 @@ const navItems: NavItem[] = [
   { href: "/invoices", icon: FileText, label: "Invoices", group: "Sales & CRM" },
   { href: "/quotations", icon: FilePlus, label: "Quotations", group: "Sales & CRM" },
   { href: "/sales", icon: TrendingUp, label: "Sales", group: "Sales & CRM" },
-  { href: "/clients", icon: Users, label: "Clients", group: "Sales & CRM" }, // Added Clients
+  { href: "/clients", icon: Users, label: "Clients", group: "Sales & CRM" },
   { href: "/expenses", icon: Receipt, label: "Expenses", group: "Operations" },
   { href: "/bills", icon: CreditCard, label: "Bills", group: "Operations" },
   { href: "/vendors", icon: Truck, label: "Vendors", group: "Operations" },
   { href: "/items", icon: Package, label: "Items & Services", group: "Inventory" },
   { href: "/inventory", icon: Boxes, label: "Inventory", group: "Inventory" },
   { href: "/reports", icon: BarChart3, label: "Reports", group: "Analysis" },
-  { href: "/settings", icon: Settings, label: "Settings", group: "System", subItems: [
-    { href: "/settings/general", icon: Settings, label: "General" },
-    { href: "/settings/tax", icon: Calculator, label: "Tax Settings" },
-    { href: "/settings/currency", icon: Coins, label: "Currency Converter" },
-    { href: "/settings/users", icon: UserCog, label: "User Management" },
-  ]},
+  { 
+    href: "/settings", 
+    icon: Settings, 
+    label: "Settings", 
+    group: "System",
+    // These subItems are for logical grouping. Navigation to these occurs via the /settings page.
+    subItems: [ 
+      { href: "/settings/general", icon: Settings, label: "General", group: "System" },
+      { href: "/settings/tax", icon: Calculator, label: "Tax Settings", group: "System" },
+      { href: "/settings/currency", icon: Coins, label: "Currency Converter", group: "System" },
+      { href: "/settings/users", icon: UserCog, label: "User Management", group: "System" },
+      { href: "/settings/appearance", icon: Palette, label: "Appearance", group: "System" },
+      { href: "/settings/security", icon: ShieldCheck, label: "Security", group: "System" },
+      { href: "/settings/notifications", icon: Bell, label: "Notifications", group: "System" },
+    ]
+  },
 ];
 
 const navGroups = ["Overview", "Financials", "Sales & CRM", "Operations", "Inventory", "Analysis", "System"];
@@ -110,11 +126,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link href={item.href} legacyBehavior passHref>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname.startsWith(item.href) && (item.href !== "/settings" || pathname === item.href)}
+                        isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/" && item.href !== "/settings") || (item.href === "/settings" && pathname.startsWith("/settings"))}
                         tooltip={item.label}
                         className={cn(
                             "w-full justify-start",
-                            pathname.startsWith(item.href) && (item.href !== "/settings" || pathname === item.href) ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+                           (pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/" && item.href !== "/settings") || (item.href === "/settings" && pathname.startsWith("/settings"))) ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
                           )}
                       >
                         <a>
@@ -134,7 +150,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-start p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://picsum.photos/100/100" alt="User Avatar" data-ai-hint="user avatar" />
+                  <AvatarImage src="https://picsum.photos/100/100" alt="User Avatar" data-ai-hint="user avatar"/>
                   <AvatarFallback>BF</AvatarFallback>
                 </Avatar>
                 <span className="ml-2 group-data-[collapsible=icon]:hidden">User Name</span>
@@ -144,7 +160,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Logout</DropdownMenuItem>
             </DropdownMenuContent>
