@@ -125,7 +125,7 @@ export default function NewQuotationPage() {
   useEffect(() => {
     let currentSubtotal = 0;
     watchedItems.forEach(item => {
-      currentSubtotal += (item.quantity || 0) * (item.unitPrice || 0);
+      currentSubtotal += (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
     });
     setSubtotal(currentSubtotal);
     const currentTaxAmount = currentSubtotal * TAX_RATE;
@@ -375,7 +375,7 @@ export default function NewQuotationPage() {
                           />
                         </TableCell>
                         <TableCell className="text-right">
-                          ${((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.unitPrice || 0)).toFixed(2)}
+                          ${((Number(watchedItems[index]?.quantity) || 0) * (Number(watchedItems[index]?.unitPrice) || 0)).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           {fields.length > 1 && (
@@ -513,9 +513,9 @@ export default function NewQuotationPage() {
                     {previewData.items.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell>{item.description}</TableCell>
-                        <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                        <TableCell className="text-center">{Number(item.quantity) || 0}</TableCell>
+                        <TableCell className="text-right">${(Number(item.unitPrice) || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -561,3 +561,4 @@ export default function NewQuotationPage() {
     </AppLayout>
   );
 }
+
