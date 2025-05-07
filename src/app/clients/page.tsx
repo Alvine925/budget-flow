@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Edit, Trash2, Filter, Users, MoreHorizontal, Mail, Phone, DollarSign, Save } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Import useEffect
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -53,16 +53,46 @@ const clientFormSchema = z.object({
 // Adjust type to match Zod schema if needed, or keep Client interface separate
 type ClientFormValues = z.infer<typeof clientFormSchema>;
 
-
-// Client interface from mockData.ts is used
-
+// localStorage key
+const LOCAL_STORAGE_KEY_CLIENTS = 'budgetflow-clients';
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>(mockClientsData); // Use imported data
+  // Initialize with mock data, will be updated by useEffect from localStorage
+  const [clients, setClients] = useState<Client[]>(mockClientsData); 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all-clients");
   const { toast } = useToast();
+
+  // Load clients from localStorage on mount (client-side only)
+  useEffect(() => {
+    try {
+      const storedClients = localStorage.getItem(LOCAL_STORAGE_KEY_CLIENTS);
+      if (storedClients) {
+        setClients(JSON.parse(storedClients));
+      } else {
+        // Optional: Seed localStorage if empty
+        localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(mockClientsData));
+        setClients(mockClientsData); // Ensure state matches if seeded
+      }
+    } catch (error) {
+      console.error("Error loading clients from localStorage:", error);
+      // Fallback to mock data if error
+      setClients(mockClientsData);
+      localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(mockClientsData));
+    }
+  }, []); // Empty dependency array ensures it runs only once on mount
+
+  // Save clients to localStorage whenever the state changes
+  useEffect(() => {
+    try {
+        // Convert clients state to JSON and save
+        localStorage.setItem(LOCAL_STORAGE_KEY_CLIENTS, JSON.stringify(clients));
+    } catch (error) {
+      console.error("Error saving clients to localStorage:", error);
+    }
+  }, [clients]); // Run whenever clients state changes
+
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -79,7 +109,7 @@ export default function ClientsPage() {
         label: clientToEdit.label,
         contactPerson: clientToEdit.contactPerson,
         email: clientToEdit.email,
-        phone: (clientToEdit as any).phone, // Assuming phone exists on Client type from mockData
+        phone: clientToEdit.phone, // Use clientToEdit.phone directly
         address: clientToEdit.address,
         category: clientToEdit.category,
       });
@@ -251,7 +281,7 @@ export default function ClientsPage() {
                           </div>
                         </TableCell>
                         <TableCell><a href={`mailto:${client.email}`} className="text-primary hover:underline flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {client.email || 'N/A'}</a></TableCell>
-                        <TableCell><a href={`tel:${(client as any).phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {(client as any).phone || 'N/A'}</a></TableCell> {/* Cast for phone */}
+                        <TableCell><a href={`tel:${client.phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {client.phone || 'N/A'}</a></TableCell> {/* Use client.phone */}
                         <TableCell><Badge variant="outline">{client.category || 'N/A'}</Badge></TableCell>
                         <TableCell className="text-right">${(client.totalRevenue || 0).toFixed(2)}</TableCell>
                         <TableCell><Badge className={getStatusBadgeVariant(client.status || '')}>{client.status || 'N/A'}</Badge></TableCell> {/* Add null check for status */}

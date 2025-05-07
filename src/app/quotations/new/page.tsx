@@ -24,9 +24,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
 import { Separator } from "@/components/ui/separator"; // Import Separator
 import Image from 'next/image';
-// Import mock data
-import { initialClients as mockClients, availableItems as mockItems, companyDetails as mockCompanyDetails, TAX_RATE } from "@/data/mockData";
-import type { Client, Item } from "@/data/mockData"; // Import types
+// Import mock data only for initial values/fallback
+import { 
+  initialClients as mockClientsData, 
+  availableItems as mockItemsData, 
+  companyDetails as mockCompanyDetails, 
+  TAX_RATE,
+  type Client, 
+  type Item 
+} from "@/data/mockData";
 
 const quotationItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
@@ -45,30 +51,76 @@ const quotationFormSchema = z.object({
 
 type QuotationFormValues = z.infer<typeof quotationFormSchema>;
 
-// Use imported mock data
-const clients = mockClients;
-const availableItems = mockItems;
-const companyDetails = mockCompanyDetails;
-
-// Removed local definitions of clients, availableItems, companyDetails, TAX_RATE
-
 interface PreviewData extends QuotationFormValues {
   subtotal: number;
   taxAmount: number;
   total: number;
   clientDetails?: Client; // Use Client type
-  companyDetails: typeof companyDetails;
+  companyDetails: typeof mockCompanyDetails;
 }
 
+// localStorage keys
+const LOCAL_STORAGE_KEY_CLIENTS = 'budgetflow-clients';
+const LOCAL_STORAGE_KEY_ITEMS = 'budgetflow-items';
+
+// Map Item type from mockData to a simpler structure if needed, or use directly
+interface SelectableItem {
+  value: string;
+  label: string;
+  price: number;
+}
 
 export default function NewQuotationPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const [clients, setClients] = useState<Client[]>(mockClientsData); // Initialize with mock
+  const [availableItems, setAvailableItems] = useState<SelectableItem[]>(
+    mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price }))
+  ); // Initialize with mock
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [total, setTotal] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [companyDetails] = useState(mockCompanyDetails); // Assuming this doesn't change often
+
+  // Load clients and items from localStorage on mount
+  useEffect(() => {
+    // Load Clients
+    try {
+      const storedClients = localStorage.getItem(LOCAL_STORAGE_KEY_CLIENTS);
+      if (storedClients) {
+        setClients(JSON.parse(storedClients));
+      } else {
+        setClients(mockClientsData); // Fallback
+      }
+    } catch (error) {
+      console.error("Error loading clients from localStorage:", error);
+      setClients(mockClientsData); // Fallback
+    }
+
+    // Load Items
+    try {
+      const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY_ITEMS);
+      if (storedItems) {
+         // Assuming stored items match the 'Item' structure from items/page.tsx
+         const parsedItems: Item[] = JSON.parse(storedItems);
+         setAvailableItems(parsedItems.map(item => ({
+             value: item.id, // Use ID as value
+             label: item.name,
+             price: item.salePrice ?? 0 // Use salePrice
+         })));
+      } else {
+         // Fallback using mockItemsData
+         setAvailableItems(mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price })));
+      }
+    } catch (error) {
+      console.error("Error loading items from localStorage:", error);
+      // Fallback using mockItemsData
+      setAvailableItems(mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price })));
+    }
+  }, []); // Run only on mount
+
 
   const form = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationFormSchema),
@@ -122,6 +174,7 @@ export default function NewQuotationPage() {
 
   function onSubmit(data: QuotationFormValues) {
     console.log("Sending Quotation:", { ...data, subtotal, taxAmount, total });
+    // In a real app, save this quotation data
     toast({
       title: "Quotation Sent (Mock)",
       description: `Quotation ${data.quotationNumber} for ${clients.find(c => c.value === data.client)?.label} has been 'sent'.`,
@@ -141,6 +194,7 @@ export default function NewQuotationPage() {
         return;
     }
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
+    // In a real app, save this draft data
     toast({
       title: "Quotation Draft Saved (Mock)",
       description: `Quotation ${data.quotationNumber} has been 'saved' as a draft.`,
@@ -175,13 +229,14 @@ export default function NewQuotationPage() {
   };
 
   const handleItemDescriptionChange = (index: number, value: string) => {
-    const selectedItem = availableItems.find(item => item.value === value); // Match by value
+    const selectedItem = availableItems.find(item => item.label.toLowerCase() === value.toLowerCase()); // Match by item.label (case-insensitive)
     if (selectedItem) {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
     } else {
-       // Allow manual input if 'custom' or no match
-       form.setValue(`items.${index}.description`, value === 'custom' ? '' : form.getValues(`items.${index}.description`)); // Keep existing or clear for custom
+       form.setValue(`items.${index}.description`, value); // Allow manual input
+       // Optionally clear price if not found, or keep manual price
+       // form.setValue(`items.${index}.unitPrice`, 0);
     }
   };
 
@@ -339,11 +394,8 @@ export default function NewQuotationPage() {
                                        {...field}
                                        list={`datalist-items-${index}`} // Link to datalist
                                        onChange={(e) => {
-                                         field.onChange(e.target.value); // Update form state
-                                         const matchedItem = availableItems.find(ai => ai.label.toLowerCase() === e.target.value.toLowerCase());
-                                         if (matchedItem) {
-                                             form.setValue(`items.${index}.unitPrice`, matchedItem.price);
-                                         }
+                                         // Update form state directly with input value
+                                         handleItemDescriptionChange(index, e.target.value);
                                      }}
                                      />
                                  </FormControl>

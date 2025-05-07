@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Edit, Trash2, Filter, Package, Briefcase, MoreHorizontal, DollarSign } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Import useEffect
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -34,8 +34,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+// Import mock data
+import { availableItems as mockItemsData } from "@/data/mockData"; // Rename import
 
 const itemFormSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -55,20 +57,56 @@ interface Item extends ItemFormValues {
   id: string;
 }
 
-const initialItems: Item[] = [
-  { id: "item_1", name: "Web Design Package", sku: "SVC-WD-001", type: "service", description: "Complete website design and development.", salePrice: 2500, trackInventory: false },
-  { id: "item_2", name: "Premium Laptop Model X", sku: "HW-LAP-00X", type: "stock_item", description: "High-performance laptop.", salePrice: 1200, purchasePrice: 800, trackInventory: true, currentStock: 15, lowStockThreshold: 5 },
-  { id: "item_3", name: "Consulting Hour", sku: "SVC-CON-001", type: "service", description: "1 hour of expert consultation.", salePrice: 150, trackInventory: false },
-  { id: "item_4", name: "Wireless Mouse Z", sku: "HW-MOU-00Z", type: "stock_item", description: "Ergonomic wireless mouse.", salePrice: 45, purchasePrice: 20, trackInventory: true, currentStock: 50, lowStockThreshold: 10 },
-  { id: "item_5", name: "Monthly Support Plan", sku: "SVC-SUP-001", type: "service", description: "Basic monthly technical support.", salePrice: 99, trackInventory: false },
-];
+// Use mockItemsData for initial state / fallback
+const initialItems: Item[] = mockItemsData.map(item => ({
+  ...item,
+  id: item.id || item.value, // Ensure ID exists
+  name: item.label,
+  salePrice: item.price,
+  type: item.type || "service", // Provide default type if missing
+  trackInventory: item.trackInventory || false,
+}));
+
+// localStorage key
+const LOCAL_STORAGE_KEY_ITEMS = 'budgetflow-items';
 
 
 export default function ItemsPage() {
+  // Initialize with initialItems, will be updated by useEffect from localStorage
   const [items, setItems] = useState<Item[]>(initialItems);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const { toast } = useToast();
+
+   // Load items from localStorage on mount (client-side only)
+   useEffect(() => {
+      try {
+        const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY_ITEMS);
+        if (storedItems) {
+          setItems(JSON.parse(storedItems));
+        } else {
+          // Optional: Seed localStorage if empty
+          localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(initialItems));
+          setItems(initialItems); // Ensure state matches if seeded
+        }
+      } catch (error) {
+        console.error("Error loading items from localStorage:", error);
+        // Fallback to mock data if error
+        setItems(initialItems);
+        localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(initialItems));
+      }
+    }, []); // Empty dependency array ensures it runs only once on mount
+
+    // Save items to localStorage whenever the state changes
+    useEffect(() => {
+      try {
+          // Convert items state to JSON and save
+          localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(items));
+      } catch (error) {
+         console.error("Error saving items to localStorage:", error);
+      }
+    }, [items]); // Run whenever items state changes
+
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
