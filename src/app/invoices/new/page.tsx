@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppLayout } from "@/components/app-layout";
@@ -65,12 +64,25 @@ export default function NewInvoicePage() {
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      invoiceNumber: `INV-${String(Date.now()).slice(-4)}`, // Auto-generate
-      issueDate: new Date(),
+      client: undefined,
+      invoiceNumber: "", // Will be set in useEffect
+      issueDate: undefined, // Will be set in useEffect
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
       notes: "Thank you for your business!",
     },
   });
+
+  useEffect(() => {
+    // Set dynamic default values only on the client-side after mount
+    // and if they haven't been set or changed by the user.
+    if (!form.getValues("invoiceNumber")) {
+      form.setValue("invoiceNumber", `INV-${String(Date.now()).slice(-4)}`);
+    }
+    if (!form.getValues("issueDate")) {
+      form.setValue("issueDate", new Date());
+    }
+  }, [form]);
+
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -97,7 +109,15 @@ export default function NewInvoicePage() {
       title: "Invoice Created",
       description: `Invoice ${data.invoiceNumber} for ${clients.find(c => c.value === data.client)?.label} has been successfully created.`,
     });
-    form.reset();
+    // Reset with client-side generated defaults after submission
+    form.reset({
+        client: undefined,
+        invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
+        issueDate: new Date(),
+        dueDate: undefined, // or new Date() if that's desired
+        items: [{ description: "", quantity: 1, unitPrice: 0 }],
+        notes: "Thank you for your business!",
+    });
   }
   
   const handleItemDescriptionChange = (index: number, value: string) => {
@@ -130,7 +150,7 @@ export default function NewInvoicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Client</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a client" />
@@ -246,7 +266,7 @@ export default function NewInvoicePage() {
                                 <Select onValueChange={(value) => {
                                   field.onChange(value); // Keep RHF happy
                                   handleItemDescriptionChange(index, value);
-                                }} value={field.value}>
+                                }} value={field.value || ""}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select or type item" />
@@ -357,7 +377,14 @@ export default function NewInvoicePage() {
             </Card>
 
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => form.reset()}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => form.reset({
+                  client: undefined,
+                  invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
+                  issueDate: new Date(),
+                  dueDate: undefined,
+                  items: [{ description: "", quantity: 1, unitPrice: 0 }],
+                  notes: "Thank you for your business!",
+              })}>Cancel</Button>
               <Button type="submit">Create Invoice</Button>
               <Button type="button" variant="secondary" onClick={() => console.log("Save as Draft")}>Save as Draft</Button>
             </div>
@@ -366,4 +393,3 @@ export default function NewInvoicePage() {
       </div>
     </AppLayout>
   );
-}
