@@ -18,7 +18,7 @@ interface TemplateOption {
 }
 
 const invoiceTemplates: TemplateOption[] = [
-  { id: 'inv-modern', name: 'Modern Invoice', description: 'A sleek and contemporary invoice design.', imageUrl: 'https://picsum.photos/300/400?invoice=modern', aiHint: 'invoice modern' },
+  { id: 'inv-modern', name: 'Modern Invoice', description: 'A sleek, contemporary, and professional invoice design.', imageUrl: 'https://picsum.photos/300/400?invoice=modern', aiHint: 'invoice modern' },
   { id: 'inv-classic', name: 'Classic Invoice', description: 'A traditional and formal invoice layout.', imageUrl: 'https://picsum.photos/300/400?invoice=classic', aiHint: 'invoice classic' },
   { id: 'inv-simple', name: 'Simple Invoice', description: 'A minimalist and clean invoice format.', imageUrl: 'https://picsum.photos/300/400?invoice=simple', aiHint: 'invoice simple' },
 ];
@@ -125,3 +125,4 @@ export default function TemplatesSettingsPage() {
     </AppLayout>
   );
 }
+
