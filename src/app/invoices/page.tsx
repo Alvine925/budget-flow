@@ -1,4 +1,5 @@
 
+"use client"; // Added "use client" directive
 
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
