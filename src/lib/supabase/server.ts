@@ -14,15 +14,20 @@ export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl) {
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL");
+   // Check if variables exist
+   if (!supabaseUrl) {
+     console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_URL");
+    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please update your .env file.");
   }
+  if (!supabaseAnonKey) {
+    console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please update your .env file.");
+  }
+
+  // Check if variables are still placeholders
   if (supabaseUrl === "YOUR_SUPABASE_URL") {
     console.error("Supabase URL is set to the placeholder value. Please update your .env file with your actual Supabase project URL.");
     throw new Error("Invalid Supabase URL configuration. Please update NEXT_PUBLIC_SUPABASE_URL in your .env file.");
-  }
-  if (!supabaseAnonKey) {
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY");
   }
   if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
     console.error("Supabase Anon Key is set to the placeholder value. Please update your .env file with your actual Supabase anonymous key.");
