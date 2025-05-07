@@ -23,6 +23,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
 import { Separator } from "@/components/ui/separator"; // Import Separator
+import Image from 'next/image';
+
 
 const quotationItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
@@ -41,10 +43,12 @@ const quotationFormSchema = z.object({
 
 type QuotationFormValues = z.infer<typeof quotationFormSchema>;
 
+// Mock data - Assuming this list could potentially be fetched or updated from state management
 const clients = [
   { value: "client_1", label: "Acme Corp", address: "123 Main St, Anytown USA", email: "john.doe@acme.com" },
   { value: "client_2", label: "Beta Solutions", address: "456 Oak Ave, Otherville USA", email: "jane.smith@beta.io" },
   { value: "client_3", label: "Gamma Inc.", address: "789 Pine Ln, Sometown USA", email: "robert.b@gamma.co" },
+  { value: "client_4", label: "Delta LLC", address: "101 Delta Way, Anytown USA", email: "alice.g@delta.org" },
 ];
 
 const availableItems = [
@@ -145,6 +149,15 @@ export default function NewQuotationPage() {
 
   const handleSaveDraft = () => {
     const data = form.getValues();
+    // Basic check if items exist before saving draft
+    if (!data.items || data.items.length === 0 || data.items.every(item => !item.description)) {
+         toast({
+            title: "Cannot Save Draft",
+            description: "Please add at least one item to the quotation.",
+            variant: "destructive",
+        });
+        return;
+    }
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
     toast({
       title: "Quotation Draft Saved (Mock)",
@@ -153,19 +166,30 @@ export default function NewQuotationPage() {
   };
 
   const handlePreview = () => {
-    const data = form.getValues();
-    const clientDetails = clients.find(c => c.value === data.client);
-    const fullPreviewData: PreviewData = {
-        ...data,
-        subtotal,
-        taxAmount,
-        total,
-        clientDetails: clientDetails || undefined,
-        companyDetails: companyDetails
-    };
-    setPreviewData(fullPreviewData);
-    setIsPreviewOpen(true);
-    console.log("Previewing Quotation:", fullPreviewData);
+     // Trigger validation before previewing
+    form.trigger().then(isValid => {
+        if (!isValid) {
+            toast({
+                title: "Validation Error",
+                description: "Please fill in all required fields before previewing.",
+                variant: "destructive",
+            });
+            return;
+        }
+        const data = form.getValues();
+        const clientDetails = clients.find(c => c.value === data.client);
+        const fullPreviewData: PreviewData = {
+            ...data,
+            subtotal,
+            taxAmount,
+            total,
+            clientDetails: clientDetails || undefined,
+            companyDetails: companyDetails
+        };
+        setPreviewData(fullPreviewData);
+        setIsPreviewOpen(true);
+        console.log("Previewing Quotation:", fullPreviewData);
+    });
   };
 
   const handleItemDescriptionChange = (index: number, value: string) => {
@@ -174,8 +198,8 @@ export default function NewQuotationPage() {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
     } else {
-       form.setValue(`items.${index}.description`, '');
-       form.setValue(`items.${index}.unitPrice`, 0);
+       // Allow manual input if 'custom' or no match
+       form.setValue(`items.${index}.description`, value === 'custom' ? '' : form.getValues(`items.${index}.description`)); // Keep existing or clear for custom
     }
   };
 
@@ -198,7 +222,7 @@ export default function NewQuotationPage() {
       <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-             {/* ... Form Cards for Client, Dates, Items, Notes ... */}
+             {/* Client and Dates Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Create New Quotation</CardTitle>
@@ -301,6 +325,7 @@ export default function NewQuotationPage() {
               </CardContent>
             </Card>
 
+            {/* Items Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Quotation Items</CardTitle>
@@ -324,35 +349,28 @@ export default function NewQuotationPage() {
                             control={form.control}
                             name={`items.${index}.description`}
                             render={({ field }) => (
-                              <FormItem>
-                                <Select onValueChange={(value) => {
-                                  field.onChange(value);
-                                  handleItemDescriptionChange(index, value);
-                                }} value={field.value || ""}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select or type item" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {availableItems.map(ai => (
-                                      <SelectItem key={ai.value} value={ai.value}>
-                                        {ai.label}
-                                      </SelectItem>
-                                    ))}
-                                     <SelectItem value="custom">Custom Item</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                {(field.value === 'custom' || (!field.value && form.getValues(`items.${index}.description`)) || (field.value && !availableItems.find(i => i.value === field.value) && form.getValues(`items.${index}.description`) !== availableItems.find(i => i.value === field.value)?.label)) && (
-                                  <Input
-                                    className="mt-1"
-                                    placeholder="Custom item description"
-                                    defaultValue={form.getValues(`items.${index}.description`)}
-                                    onChange={(e) => form.setValue(`items.${index}.description`, e.target.value)}
-                                  />
-                                )}
-                                <FormMessage />
-                              </FormItem>
+                                <FormItem>
+                                 <FormControl>
+                                    <Input 
+                                       placeholder="Item or Service description" 
+                                       {...field} 
+                                       list={`datalist-items-${index}`} // Link to datalist
+                                       onChange={(e) => {
+                                         field.onChange(e.target.value); // Update form state
+                                         const matchedItem = availableItems.find(ai => ai.label.toLowerCase() === e.target.value.toLowerCase());
+                                         if (matchedItem) {
+                                             form.setValue(`items.${index}.unitPrice`, matchedItem.price);
+                                         }
+                                     }}
+                                     />
+                                 </FormControl>
+                                 <datalist id={`datalist-items-${index}`}>
+                                     {availableItems.map(ai => (
+                                         <option key={ai.value} value={ai.label} />
+                                     ))}
+                                 </datalist>
+                                 <FormMessage />
+                               </FormItem>
                             )}
                           />
                         </TableCell>
@@ -361,7 +379,7 @@ export default function NewQuotationPage() {
                             control={form.control}
                             name={`items.${index}.quantity`}
                             render={({ field }) => (
-                              <FormItem><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormControl><Input type="number" {...field} min="1"/></FormControl><FormMessage /></FormItem>
                             )}
                           />
                         </TableCell>
@@ -370,7 +388,7 @@ export default function NewQuotationPage() {
                             control={form.control}
                             name={`items.${index}.unitPrice`}
                             render={({ field }) => (
-                              <FormItem><FormControl><Input type="number" {...field} step="0.01" /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormControl><Input type="number" {...field} step="0.01" min="0"/></FormControl><FormMessage /></FormItem>
                             )}
                           />
                         </TableCell>
@@ -417,6 +435,7 @@ export default function NewQuotationPage() {
               </CardFooter>
             </Card>
 
+            {/* Notes Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>
@@ -438,7 +457,7 @@ export default function NewQuotationPage() {
               </CardContent>
             </Card>
 
-
+            {/* Action Buttons */}
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
               <Button type="button" variant="outline" onClick={handlePreview}>
@@ -473,7 +492,9 @@ export default function NewQuotationPage() {
                     <p className="text-sm text-muted-foreground">{previewData.companyDetails.email} | {previewData.companyDetails.phone}</p>
                   </div>
                    <div className="text-right">
-                     <img src={previewData.companyDetails.logoUrl} alt="Company Logo" className="h-10 mb-2 ml-auto" data-ai-hint={previewData.companyDetails.aiHint}/>
+                    {previewData.companyDetails.logoUrl && (
+                         <Image src={previewData.companyDetails.logoUrl} alt="Company Logo" width={100} height={40} className="h-10 w-auto mb-2 ml-auto object-contain" data-ai-hint={previewData.companyDetails.aiHint}/>
+                     )}
                     <h3 className="text-xl font-semibold">QUOTATION</h3>
                     <p className="text-sm text-muted-foreground"># {previewData.quotationNumber}</p>
                   </div>
@@ -561,4 +582,3 @@ export default function NewQuotationPage() {
     </AppLayout>
   );
 }
-

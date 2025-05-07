@@ -22,6 +22,7 @@ import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import Image from 'next/image';
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
@@ -42,11 +43,14 @@ const invoiceFormSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-// Mock data
+// Mock data - Assuming this list could potentially be fetched or updated from state management in a real app
 const clients = [
   { value: "client_1", label: "Acme Corp", address: "123 Main St, Anytown USA", email: "john.doe@acme.com" },
   { value: "client_2", label: "Beta Solutions", address: "456 Oak Ave, Otherville USA", email: "jane.smith@beta.io" },
   { value: "client_3", label: "Gamma Inc.", address: "789 Pine Ln, Sometown USA", email: "robert.b@gamma.co" },
+  { value: "client_4", label: "Delta LLC", address: "101 Delta Way, Anytown USA", email: "alice.g@delta.org" },
+  // If a new client "Test Client 5" was added via the client page, it would need to be reflected here or fetched.
+  // { value: "client_xyz", label: "Test Client 5", address: "...", email: "..." },
 ];
 
 const availableItems = [
@@ -136,6 +140,15 @@ export default function NewInvoicePage() {
 
   const handleSaveDraft = () => {
     const data = form.getValues();
+    // Basic check if items exist before saving draft
+    if (!data.items || data.items.length === 0 || data.items.every(item => !item.description)) {
+         toast({
+            title: "Cannot Save Draft",
+            description: "Please add at least one item to the invoice.",
+            variant: "destructive",
+        });
+        return;
+    }
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
     toast({
       title: "Invoice Draft Saved (Mock)",
@@ -145,20 +158,31 @@ export default function NewInvoicePage() {
   };
 
   const handlePreview = () => {
-    const data = form.getValues();
-    const clientDetails = clients.find(c => c.value === data.client);
-    const fullPreviewData: PreviewData = {
-        ...data,
-        subtotal,
-        taxAmount,
-        total,
-        clientDetails: clientDetails || undefined, // Attach found client details
-        companyDetails: companyDetails // Attach company details
-    };
-    setPreviewData(fullPreviewData);
-    setIsPreviewOpen(true);
-    // No toast for preview, just open the sheet
-    console.log("Previewing Invoice:", fullPreviewData);
+    // Trigger validation before previewing
+    form.trigger().then(isValid => {
+        if (!isValid) {
+            toast({
+                title: "Validation Error",
+                description: "Please fill in all required fields before previewing.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const data = form.getValues();
+        const clientDetails = clients.find(c => c.value === data.client);
+        const fullPreviewData: PreviewData = {
+            ...data,
+            subtotal,
+            taxAmount,
+            total,
+            clientDetails: clientDetails || undefined, // Attach found client details
+            companyDetails: companyDetails // Attach company details
+        };
+        setPreviewData(fullPreviewData);
+        setIsPreviewOpen(true);
+        console.log("Previewing Invoice:", fullPreviewData);
+    });
   };
 
   const handleItemDescriptionChange = (index: number, value: string) => {
@@ -167,8 +191,12 @@ export default function NewInvoicePage() {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
     } else {
-       form.setValue(`items.${index}.description`, '');
-       form.setValue(`items.${index}.unitPrice`, 0);
+       // Allow manual input if 'custom' or no match
+       form.setValue(`items.${index}.description`, value === 'custom' ? '' : form.getValues(`items.${index}.description`)); // Keep existing or clear for custom
+       if (value !== 'custom') {
+            // If not custom and not found, potentially clear price or keep existing manual price
+            // form.setValue(`items.${index}.unitPrice`, 0);
+       }
     }
   };
 
@@ -189,7 +217,7 @@ export default function NewInvoicePage() {
       <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* ... Form Cards for Client, Dates, Items, Notes ... */}
+            {/* Client and Dates Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Create New Invoice</CardTitle>
@@ -292,6 +320,7 @@ export default function NewInvoicePage() {
               </CardContent>
             </Card>
 
+            {/* Items Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Invoice Items</CardTitle>
@@ -316,32 +345,28 @@ export default function NewInvoicePage() {
                             name={`items.${index}.description`}
                             render={({ field }) => (
                               <FormItem>
-                                <Select onValueChange={(value) => {
-                                  field.onChange(value);
-                                  handleItemDescriptionChange(index, value);
-                                }} value={field.value || ""}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select or type item" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
+                                {/* Using Input directly for free text entry */}
+                                <FormControl>
+                                   <Input 
+                                      placeholder="Item or Service description" 
+                                      {...field} 
+                                      list={`datalist-items-${index}`} // Link to datalist
+                                      onChange={(e) => {
+                                        field.onChange(e.target.value); // Update form state
+                                        // Attempt to find matching item for price auto-fill
+                                        const matchedItem = availableItems.find(ai => ai.label.toLowerCase() === e.target.value.toLowerCase());
+                                        if (matchedItem) {
+                                            form.setValue(`items.${index}.unitPrice`, matchedItem.price);
+                                        }
+                                    }}
+                                    />
+                                </FormControl>
+                                {/* Datalist for suggestions */}
+                                <datalist id={`datalist-items-${index}`}>
                                     {availableItems.map(ai => (
-                                      <SelectItem key={ai.value} value={ai.value}>
-                                        {ai.label}
-                                      </SelectItem>
+                                        <option key={ai.value} value={ai.label} />
                                     ))}
-                                     <SelectItem value="custom">Custom Item</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                {(field.value === 'custom' || (!field.value && form.getValues(`items.${index}.description`)) || (field.value && !availableItems.find(i => i.value === field.value) && form.getValues(`items.${index}.description`) !== availableItems.find(i => i.value === field.value)?.label)) && (
-                                  <Input
-                                    className="mt-1"
-                                    placeholder="Custom item description"
-                                    defaultValue={form.getValues(`items.${index}.description`)} // Keep existing manual input
-                                    onChange={(e) => form.setValue(`items.${index}.description`, e.target.value)}
-                                  />
-                                )}
+                                </datalist>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -352,7 +377,7 @@ export default function NewInvoicePage() {
                             control={form.control}
                             name={`items.${index}.quantity`}
                             render={({ field }) => (
-                              <FormItem><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormControl><Input type="number" {...field} min="1" /></FormControl><FormMessage /></FormItem>
                             )}
                           />
                         </TableCell>
@@ -361,7 +386,7 @@ export default function NewInvoicePage() {
                             control={form.control}
                             name={`items.${index}.unitPrice`}
                             render={({ field }) => (
-                              <FormItem><FormControl><Input type="number" {...field} step="0.01" /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormControl><Input type="number" {...field} step="0.01" min="0"/></FormControl><FormMessage /></FormItem>
                             )}
                           />
                         </TableCell>
@@ -408,6 +433,7 @@ export default function NewInvoicePage() {
               </CardFooter>
             </Card>
 
+             {/* Notes Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>
@@ -430,6 +456,7 @@ export default function NewInvoicePage() {
             </Card>
 
 
+            {/* Action Buttons */}
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
               <Button type="button" variant="outline" onClick={handlePreview}>
@@ -464,7 +491,9 @@ export default function NewInvoicePage() {
                     <p className="text-sm text-muted-foreground">{previewData.companyDetails.email} | {previewData.companyDetails.phone}</p>
                   </div>
                   <div className="text-right">
-                     <img src={previewData.companyDetails.logoUrl} alt="Company Logo" className="h-10 mb-2 ml-auto" data-ai-hint={previewData.companyDetails.aiHint}/>
+                     {previewData.companyDetails.logoUrl && (
+                         <Image src={previewData.companyDetails.logoUrl} alt="Company Logo" width={100} height={40} className="h-10 w-auto mb-2 ml-auto object-contain" data-ai-hint={previewData.companyDetails.aiHint}/>
+                     )}
                     <h3 className="text-xl font-semibold">INVOICE</h3>
                     <p className="text-sm text-muted-foreground"># {previewData.invoiceNumber}</p>
                   </div>
@@ -554,4 +583,3 @@ export default function NewInvoicePage() {
     </AppLayout>
   );
 }
-
