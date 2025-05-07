@@ -37,9 +37,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+// Import mock data
+import { initialClients as mockClientsData, clientCategories, type Client } from "@/data/mockData";
+
 
 const clientFormSchema = z.object({
-  name: z.string().min(1, "Client name is required."),
+  label: z.string().min(1, "Client name is required."), // Use 'label' for name consistency
   contactPerson: z.string().optional(),
   email: z.string().email("Invalid email address.").optional().or(z.literal('')),
   phone: z.string().optional(),
@@ -47,26 +50,15 @@ const clientFormSchema = z.object({
   category: z.string().optional(), // e.g., "Key Account", "New Lead", "Past Client"
 });
 
+// Adjust type to match Zod schema if needed, or keep Client interface separate
 type ClientFormValues = z.infer<typeof clientFormSchema>;
 
-interface Client extends ClientFormValues {
-  id: string;
-  totalRevenue: number;
-  status: "Active" | "Inactive" | "Lead";
-  avatarUrl?: string;
-}
 
-const initialClients: Client[] = [
-  { id: "client_1", name: "Acme Corp", contactPerson: "John Doe", email: "john.doe@acme.com", phone: "555-0101", address: "123 Main St, Anytown USA", category: "Key Account", totalRevenue: 25000, status: "Active", avatarUrl: "https://picsum.photos/seed/acme/40/40" },
-  { id: "client_2", name: "Beta Solutions", contactPerson: "Jane Smith", email: "jane.smith@beta.io", phone: "555-0102", address: "456 Oak Ave, Anytown USA", category: "New Lead", totalRevenue: 0, status: "Lead", avatarUrl: "https://picsum.photos/seed/beta/40/40" },
-  { id: "client_3", name: "Gamma Inc.", contactPerson: "Robert Brown", email: "robert.b@gamma.co", phone: "555-0103", category: "Past Client", totalRevenue: 5000, status: "Inactive" },
-  { id: "client_4", name: "Delta LLC", contactPerson: "Alice Green", email: "alice.g@delta.org", phone: "555-0104", category: "Active Client", totalRevenue: 12000, status: "Active", avatarUrl: "https://picsum.photos/seed/delta/40/40" },
-];
+// Client interface from mockData.ts is used
 
-const clientCategories = ["Key Account", "Active Client", "New Lead", "Past Client", "Prospect"];
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [clients, setClients] = useState<Client[]>(mockClientsData); // Use imported data
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all-clients");
@@ -75,17 +67,25 @@ export default function ClientsPage() {
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-       name: "", contactPerson: "", email: "", phone: "", address: "", category: "" 
+       label: "", contactPerson: "", email: "", phone: "", address: "", category: ""
     }
   });
 
   // Effect for populating the EDIT form
   React.useEffect(() => {
     if (clientToEdit && isEditDialogOpen) {
-      form.reset(clientToEdit);
+      // Map Client fields to ClientFormValues for the form
+      form.reset({
+        label: clientToEdit.label,
+        contactPerson: clientToEdit.contactPerson,
+        email: clientToEdit.email,
+        phone: (clientToEdit as any).phone, // Assuming phone exists on Client type from mockData
+        address: clientToEdit.address,
+        category: clientToEdit.category,
+      });
     } else if (!isEditDialogOpen) {
       // Reset form when closing edit dialog or for the 'Add New' tab
-      form.reset({ name: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
+      form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
     }
   }, [clientToEdit, isEditDialogOpen, form]);
 
@@ -93,21 +93,36 @@ export default function ClientsPage() {
   function onSubmit(data: ClientFormValues) {
     if (clientToEdit) {
       // --- Editing Existing Client ---
-      setClients(clients.map(c => c.id === clientToEdit.id ? { ...clientToEdit, ...data } : c));
-      toast({ title: "Client Updated", description: `Client "${data.name}" updated successfully.` });
+      setClients(clients.map(c => c.id === clientToEdit.id ? {
+          ...clientToEdit, // Spread existing full client data
+          label: data.label, // Update with form values
+          contactPerson: data.contactPerson,
+          email: data.email || '', // Ensure email is string or empty string
+          phone: data.phone,
+          address: data.address || '', // Ensure address is string or empty string
+          category: data.category,
+         } : c));
+      toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
       setIsEditDialogOpen(false); // Close edit dialog
       setClientToEdit(null);
     } else {
       // --- Adding New Client ---
+      const newClientId = `client_${Date.now()}`;
       const newClient: Client = {
-        id: `client_${Date.now()}`,
-        ...data,
+        id: newClientId,
+        value: newClientId, // Use the same ID for value
+        label: data.label, // Use 'label' from form
+        contactPerson: data.contactPerson,
+        email: data.email || '',
+        phone: data.phone,
+        address: data.address || '',
+        category: data.category,
         totalRevenue: 0,
         status: data.category === "New Lead" ? "Lead" : "Active" // Basic status logic
       };
       setClients(prevClients => [...prevClients, newClient]); // Use functional update for safety
-      toast({ title: "Client Added", description: `Client "${data.name}" added successfully.` });
-      form.reset({ name: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form
+      toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
+      form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form
       setActiveTab("all-clients"); // Switch back to the list view
     }
   }
@@ -123,7 +138,7 @@ export default function ClientsPage() {
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) { // Add null check for status
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "lead":
@@ -189,7 +204,7 @@ export default function ClientsPage() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${clients.reduce((sum, c) => sum + c.totalRevenue, 0).toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0).toFixed(2)}</div>
                   <p className="text-xs text-muted-foreground">Across all clients</p>
                 </CardContent>
               </Card>
@@ -229,17 +244,17 @@ export default function ClientsPage() {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                              <AvatarImage src={client.avatarUrl} alt={client.name} data-ai-hint="company logo person" />
-                              <AvatarFallback>{client.name.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
+                              <AvatarImage src={client.avatarUrl} alt={client.label} data-ai-hint="company logo person" />
+                              <AvatarFallback>{client.label.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            {client.name}
+                            {client.label}
                           </div>
                         </TableCell>
                         <TableCell><a href={`mailto:${client.email}`} className="text-primary hover:underline flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {client.email || 'N/A'}</a></TableCell>
-                        <TableCell><a href={`tel:${client.phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {client.phone || 'N/A'}</a></TableCell>
+                        <TableCell><a href={`tel:${(client as any).phone}`} className="text-primary hover:underline flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {(client as any).phone || 'N/A'}</a></TableCell> {/* Cast for phone */}
                         <TableCell><Badge variant="outline">{client.category || 'N/A'}</Badge></TableCell>
-                        <TableCell className="text-right">${client.totalRevenue.toFixed(2)}</TableCell>
-                        <TableCell><Badge className={getStatusBadgeVariant(client.status)}>{client.status}</Badge></TableCell>
+                        <TableCell className="text-right">${(client.totalRevenue || 0).toFixed(2)}</TableCell>
+                        <TableCell><Badge className={getStatusBadgeVariant(client.status || '')}>{client.status || 'N/A'}</Badge></TableCell> {/* Add null check for status */}
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -254,12 +269,12 @@ export default function ClientsPage() {
                                 <Edit className="mr-2 h-4 w-4" /> Edit Client
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/invoices/new?client=${client.id}`}>
+                                <Link href={`/invoices/new?client=${client.value}`}> {/* Use client.value */}
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/quotations/new?client=${client.id}`}>
+                                <Link href={`/quotations/new?client=${client.value}`}> {/* Use client.value */}
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Quotation
                                 </Link>
                               </DropdownMenuItem>
@@ -276,7 +291,7 @@ export default function ClientsPage() {
                 </Table>
                 {clients.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
-                    No clients found.
+                    No clients found. Add one using the 'Add New Client' tab.
                   </div>
                 )}
               </CardContent>
@@ -293,7 +308,7 @@ export default function ClientsPage() {
                 <Form {...form}>
                   {/* Use onSubmit directly here */}
                   <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-                     <FormField control={form.control} name="name" render={({ field }) => (
+                     <FormField control={form.control} name="label" render={({ field }) => ( // Use 'label' for name field
                         <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} placeholder="Acme Corporation"/></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="contactPerson" render={({ field }) => (
@@ -329,7 +344,7 @@ export default function ClientsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Dialog for Editing - remains largely the same */}
+        {/* Dialog for Editing - remains largely the same, ensure field names match */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -340,7 +355,7 @@ export default function ClientsPage() {
               {/* Ensure this form also uses onSubmit */}
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                 {/* FormFields are identical to the Add New form */}
-                 <FormField control={form.control} name="name" render={({ field }) => (
+                 <FormField control={form.control} name="label" render={({ field }) => ( // Use 'label'
                     <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <FormField control={form.control} name="contactPerson" render={({ field }) => (

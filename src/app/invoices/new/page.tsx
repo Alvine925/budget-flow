@@ -23,6 +23,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import Image from 'next/image';
+// Import mock data
+import { initialClients as mockClients, availableItems as mockItems, companyDetails as mockCompanyDetails, TAX_RATE } from "@/data/mockData";
+import type { Client, Item } from "@/data/mockData"; // Import types if needed
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
@@ -32,7 +35,7 @@ const invoiceItemSchema = z.object({
 });
 
 const invoiceFormSchema = z.object({
-  client: z.string().min(1, "Client selection is required."),
+  client: z.string().min(1, "Client selection is required."), // Store client ID/value
   invoiceNumber: z.string().min(1, "Invoice number is required."),
   issueDate: z.date({ required_error: "Issue date is required." }),
   dueDate: z.date({ required_error: "Due date is required." }),
@@ -43,41 +46,18 @@ const invoiceFormSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-// Mock data - Assuming this list could potentially be fetched or updated from state management in a real app
-const clients = [
-  { value: "client_1", label: "Acme Corp", address: "123 Main St, Anytown USA", email: "john.doe@acme.com" },
-  { value: "client_2", label: "Beta Solutions", address: "456 Oak Ave, Otherville USA", email: "jane.smith@beta.io" },
-  { value: "client_3", label: "Gamma Inc.", address: "789 Pine Ln, Sometown USA", email: "robert.b@gamma.co" },
-  { value: "client_4", label: "Delta LLC", address: "101 Delta Way, Anytown USA", email: "alice.g@delta.org" },
-  // If a new client "Test Client 5" was added via the client page, it would need to be reflected here or fetched.
-  // { value: "client_xyz", label: "Test Client 5", address: "...", email: "..." },
-];
+// Use imported mock data
+const clients = mockClients;
+const availableItems = mockItems;
+const companyDetails = mockCompanyDetails;
 
-const availableItems = [
-  { value: "item_1", label: "Web Design Service", price: 1200 },
-  { value: "item_2", label: "Consulting Hours", price: 150 },
-  { value: "item_3", label: "Software License", price: 500 },
-  { value: "item_4", label: "Custom Development", price: 80 },
-];
-
-// Mock Company Data (replace with actual data source later)
-const companyDetails = {
-  name: "BudgetFlow Inc.",
-  address: "99 Innovation Drive, Tech City, USA",
-  email: "billing@budgetflow.com",
-  phone: "555-FLOW",
-  logoUrl: "https://picsum.photos/seed/budgetflow/100/40", // Placeholder logo
-  aiHint: "company logo"
-};
-
-
-const TAX_RATE = 0.1; // Example 10% tax rate
+// Removed local definitions of clients, availableItems, companyDetails, TAX_RATE
 
 interface PreviewData extends InvoiceFormValues {
   subtotal: number;
   taxAmount: number;
   total: number;
-  clientDetails?: typeof clients[0];
+  clientDetails?: Client; // Use Client type from mockData
   companyDetails: typeof companyDetails;
 }
 
@@ -170,7 +150,7 @@ export default function NewInvoicePage() {
         }
 
         const data = form.getValues();
-        const clientDetails = clients.find(c => c.value === data.client);
+        const clientDetails = clients.find(c => c.value === data.client); // Find client by value (ID)
         const fullPreviewData: PreviewData = {
             ...data,
             subtotal,
@@ -186,7 +166,7 @@ export default function NewInvoicePage() {
   };
 
   const handleItemDescriptionChange = (index: number, value: string) => {
-    const selectedItem = availableItems.find(item => item.value === value);
+    const selectedItem = availableItems.find(item => item.value === value); // Match by item.value
     if (selectedItem) {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
@@ -239,6 +219,7 @@ export default function NewInvoicePage() {
                           </FormControl>
                           <SelectContent>
                             {clients.map((client) => (
+                              // Use client.value for the SelectItem value
                               <SelectItem key={client.value} value={client.value}>
                                 {client.label}
                               </SelectItem>
@@ -347,9 +328,9 @@ export default function NewInvoicePage() {
                               <FormItem>
                                 {/* Using Input directly for free text entry */}
                                 <FormControl>
-                                   <Input 
-                                      placeholder="Item or Service description" 
-                                      {...field} 
+                                   <Input
+                                      placeholder="Item or Service description"
+                                      {...field}
                                       list={`datalist-items-${index}`} // Link to datalist
                                       onChange={(e) => {
                                         field.onChange(e.target.value); // Update form state
