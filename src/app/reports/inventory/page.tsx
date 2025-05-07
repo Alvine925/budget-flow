@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Package, DollarSign, AlertTriangle, Archive } from "lucide-react";
 import { DatePickerWithRange } from "@/components/date-range-picker";
-import React from "react";
+import React, { useRef } from "react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const inventorySummaryData = [
   { name: "Premium Laptop Model X", category: "Electronics", stock: 15, value: 15 * 800, lowStockThreshold: 5 },
@@ -39,6 +41,41 @@ const stockValueByCategory = inventorySummaryData.reduce((acc, item) => {
 const stockValueByCategoryChartData = Object.entries(stockValueByCategory).map(([name, value]) => ({ name, value }));
 
 export default function InventorySummaryPage() {
+  const reportContentRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPdf = () => {
+    if (reportContentRef.current) {
+      html2canvas(reportContentRef.current, { scale: 2 }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'p',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const ratio = canvasWidth / canvasHeight;
+
+        let imgWidthOnPdf = pdfWidth - 20;
+        let imgHeightOnPdf = imgWidthOnPdf / ratio;
+
+        if (imgHeightOnPdf > pdfHeight - 20) {
+          imgHeightOnPdf = pdfHeight - 20;
+          imgWidthOnPdf = imgHeightOnPdf * ratio;
+        }
+        
+        const xPosition = (pdfWidth - imgWidthOnPdf) / 2;
+        const yPosition = 10;
+
+        pdf.addImage(imgData, 'PNG', xPosition, yPosition, imgWidthOnPdf, imgHeightOnPdf);
+        pdf.save('inventory-summary-report.pdf');
+      });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4 md:px-6">
@@ -46,118 +83,118 @@ export default function InventorySummaryPage() {
           <h1 className="text-3xl font-semibold text-foreground">Inventory Summary Report</h1>
           <div className="flex items-center gap-2">
             <DatePickerWithRange />
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportPdf}>
               <Download className="mr-2 h-4 w-4" /> Export (PDF)
             </Button>
           </div>
         </div>
+        <div ref={reportContentRef}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summaryMetrics.totalValue.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Current valuation of all stock</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Items in Stock</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryMetrics.totalItems.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Sum of all item quantities</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryMetrics.lowStockCount}</div>
+                <p className="text-xs text-muted-foreground">Items at or below threshold</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Out of Stock Items</CardTitle>
+                <Archive className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryMetrics.outOfStockCount}</div>
+                <p className="text-xs text-muted-foreground">Items with zero quantity</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Card className="mb-8">
+              <CardHeader>
+                  <CardTitle>Inventory Value by Category</CardTitle>
+                  <CardDescription>Distribution of inventory value across different categories.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <ChartContainer config={{ value: { label: "Value", color: "hsl(var(--chart-1))" } }} className="h-[350px] w-full">
+                      <RechartsBarChart data={stockValueByCategoryChartData} layout="vertical" margin={{ right: 30, left: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" tickFormatter={(value) => `$${value/1000}k`} />
+                          <YAxis dataKey="name" type="category" width={120} />
+                          <RechartsTooltip content={<ChartTooltipContent formatter={(value) => `$${Number(value).toLocaleString()}`} />} />
+                          <Bar dataKey="value" fill="var(--color-value)" radius={[0, 4, 4, 0]} />
+                      </RechartsBarChart>
+                  </ChartContainer>
+              </CardContent>
+          </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <CardTitle>Detailed Inventory List</CardTitle>
+              <CardDescription>Overview of each item's stock level and value.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${summaryMetrics.totalValue.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Current valuation of all stock</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Items in Stock</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics.totalItems.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Sum of all item quantities</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics.lowStockCount}</div>
-              <p className="text-xs text-muted-foreground">Items at or below threshold</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Out of Stock Items</CardTitle>
-              <Archive className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics.outOfStockCount}</div>
-              <p className="text-xs text-muted-foreground">Items with zero quantity</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Current Stock</TableHead>
+                    <TableHead className="text-right">Low Stock Threshold</TableHead>
+                    <TableHead className="text-right">Total Value</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inventorySummaryData.map((item) => (
+                    <TableRow key={item.name}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell className="text-right">{item.stock.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{item.lowStockThreshold.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">${item.value.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {item.stock === 0 ? <span className="text-red-600 font-semibold">Out of Stock</span> :
+                         item.stock <= item.lowStockThreshold ? <span className="text-yellow-600 font-semibold">Low Stock</span> :
+                         <span className="text-green-600">In Stock</span>}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {inventorySummaryData.length === 0 && (
+                      <TableRow>
+                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                          No inventory data available.
+                          </TableCell>
+                      </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </div>
-        
-        <Card className="mb-8">
-            <CardHeader>
-                <CardTitle>Inventory Value by Category</CardTitle>
-                <CardDescription>Distribution of inventory value across different categories.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ChartContainer config={{ value: { label: "Value", color: "hsl(var(--chart-1))" } }} className="h-[350px] w-full">
-                    <RechartsBarChart data={stockValueByCategoryChartData} layout="vertical" margin={{ right: 30, left: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" tickFormatter={(value) => `$${value/1000}k`} />
-                        <YAxis dataKey="name" type="category" width={120} />
-                        <RechartsTooltip content={<ChartTooltipContent formatter={(value) => `$${Number(value).toLocaleString()}`} />} />
-                        <Bar dataKey="value" fill="var(--color-value)" radius={[0, 4, 4, 0]} />
-                    </RechartsBarChart>
-                </ChartContainer>
-            </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Detailed Inventory List</CardTitle>
-            <CardDescription>Overview of each item's stock level and value.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Current Stock</TableHead>
-                  <TableHead className="text-right">Low Stock Threshold</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inventorySummaryData.map((item) => (
-                  <TableRow key={item.name}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell className="text-right">{item.stock.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{item.lowStockThreshold.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">${item.value.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {item.stock === 0 ? <span className="text-red-600 font-semibold">Out of Stock</span> :
-                       item.stock <= item.lowStockThreshold ? <span className="text-yellow-600 font-semibold">Low Stock</span> :
-                       <span className="text-green-600">In Stock</span>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {inventorySummaryData.length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                        No inventory data available.
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       </div>
     </AppLayout>
   );
 }
-

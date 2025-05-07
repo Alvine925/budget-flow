@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, TrendingUp, TrendingDown, DollarSign, ArrowDownToLine, ArrowUpFromLine, Banknote } from "lucide-react";
 import { DatePickerWithRange } from "@/components/date-range-picker";
-import React from "react";
+import React, { useRef } from "react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface CashFlowSection {
   title: string;
@@ -89,6 +91,41 @@ const summaryMetrics = {
 };
 
 export default function CashFlowPage() {
+  const reportContentRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPdf = () => {
+    if (reportContentRef.current) {
+      html2canvas(reportContentRef.current, { scale: 2 }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'p',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const ratio = canvasWidth / canvasHeight;
+
+        let imgWidthOnPdf = pdfWidth - 20;
+        let imgHeightOnPdf = imgWidthOnPdf / ratio;
+
+        if (imgHeightOnPdf > pdfHeight - 20) {
+          imgHeightOnPdf = pdfHeight - 20;
+          imgWidthOnPdf = imgHeightOnPdf * ratio;
+        }
+
+        const xPosition = (pdfWidth - imgWidthOnPdf) / 2;
+        const yPosition = 10;
+
+        pdf.addImage(imgData, 'PNG', xPosition, yPosition, imgWidthOnPdf, imgHeightOnPdf);
+        pdf.save('cash-flow-report.pdf');
+      });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4 md:px-6">
@@ -96,101 +133,102 @@ export default function CashFlowPage() {
           <h1 className="text-3xl font-semibold text-foreground">Cash Flow Statement</h1>
           <div className="flex items-center gap-2">
             <DatePickerWithRange />
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportPdf}>
               <Download className="mr-2 h-4 w-4" /> Export (PDF)
             </Button>
           </div>
         </div>
+        <div ref={reportContentRef}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Operating Cash Flow</CardTitle>
+                <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summaryMetrics.netCashFromOperating.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Cash from core operations</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Investing Cash Flow</CardTitle>
+                <Banknote className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summaryMetrics.netCashFromInvesting.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Cash for investments</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Financing Cash Flow</CardTitle>
+                <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${summaryMetrics.netCashFromFinancing.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Cash from financing</p>
+              </CardContent>
+            </Card>
+             <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Net Change in Cash</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${summaryMetrics.netChangeInCash >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${summaryMetrics.netChangeInCash.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">Overall cash movement</p>
+              </CardContent>
+            </Card>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Operating Cash Flow</CardTitle>
-              <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <CardTitle>Detailed Cash Flow Statement</CardTitle>
+              <CardDescription>As of [Selected Date Range End]</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${summaryMetrics.netCashFromOperating.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Cash from core operations</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Investing Cash Flow</CardTitle>
-              <Banknote className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${summaryMetrics.netCashFromInvesting.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Cash for investments</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Financing Cash Flow</CardTitle>
-              <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${summaryMetrics.netCashFromFinancing.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Cash from financing</p>
-            </CardContent>
-          </Card>
-           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Net Change in Cash</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${summaryMetrics.netChangeInCash >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${summaryMetrics.netChangeInCash.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Overall cash movement</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60%]">Account</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cashFlowData.map((section, sectionIndex) => (
+                    <React.Fragment key={sectionIndex}>
+                      {section.isMainHeader ? (
+                        <TableRow className="bg-primary/10">
+                          <TableCell colSpan={2} className="font-bold text-lg text-primary pt-4 pb-2">{section.title}</TableCell>
+                        </TableRow>
+                      ) : (
+                        <TableRow className="font-semibold border-t">
+                          <TableCell>{section.title}</TableCell>
+                          <TableCell className="text-right">${section.total.toLocaleString()}</TableCell>
+                        </TableRow>
+                      )}
+                      
+                      {section.items.map((item, itemIndex) => (
+                        <TableRow key={`${sectionIndex}-${itemIndex}`}>
+                          <TableCell className="pl-8">{item.description}</TableCell>
+                          <TableCell className="text-right">${item.amount.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Spacing after main totals */}
+                       {(section.title.startsWith("Net Cash") || section.title === "Cash at End of Period" || section.title === "Cash at Beginning of Period") && sectionIndex < cashFlowData.length -1 && !cashFlowData[sectionIndex+1].isMainHeader && (
+                          <TableRow><TableCell colSpan={2} className="py-2"></TableCell></TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Detailed Cash Flow Statement</CardTitle>
-            <CardDescription>As of [Selected Date Range End]</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60%]">Account</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cashFlowData.map((section, sectionIndex) => (
-                  <React.Fragment key={sectionIndex}>
-                    {section.isMainHeader ? (
-                      <TableRow className="bg-primary/10">
-                        <TableCell colSpan={2} className="font-bold text-lg text-primary pt-4 pb-2">{section.title}</TableCell>
-                      </TableRow>
-                    ) : (
-                      <TableRow className="font-semibold border-t">
-                        <TableCell>{section.title}</TableCell>
-                        <TableCell className="text-right">${section.total.toLocaleString()}</TableCell>
-                      </TableRow>
-                    )}
-                    
-                    {section.items.map((item, itemIndex) => (
-                      <TableRow key={`${sectionIndex}-${itemIndex}`}>
-                        <TableCell className="pl-8">{item.description}</TableCell>
-                        <TableCell className="text-right">${item.amount.toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))}
-                    
-                    {/* Spacing after main totals */}
-                     {(section.title.startsWith("Net Cash") || section.title === "Cash at End of Period" || section.title === "Cash at Beginning of Period") && sectionIndex < cashFlowData.length -1 && !cashFlowData[sectionIndex+1].isMainHeader && (
-                        <TableRow><TableCell colSpan={2} className="py-2"></TableCell></TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       </div>
     </AppLayout>
   );
