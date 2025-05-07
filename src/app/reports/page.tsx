@@ -13,9 +13,9 @@ export default function ReportsPage() {
     { title: "Balance Sheet", description: "Snapshot of your company's assets, liabilities, and equity.", icon: ListChecks, link: "/reports/balance-sheet", available: true },
     { title: "Sales Summary Report", description: "Analyze sales performance by product, client, or period.", icon: TrendingUp, link: "/reports/sales-summary", available: true },
     { title: "Expense Summary Report", description: "Detailed breakdown of expenses by category or vendor.", icon: PieChartIcon, link: "/reports/expense-summary", available: true },
-    { title: "Cash Flow Statement", description: "Track the movement of cash in and out of your business.", icon: Banknote, link: "/reports/cash-flow", available: false },
-    { title: "Client Report", description: "Insights into your client base, sales, and interactions.", icon: Users, link: "/reports/clients", available: false },
-    { title: "Inventory Summary", description: "Overview of stock levels, values, and movement.", icon: BarChart3, link: "/reports/inventory", available: false },
+    { title: "Cash Flow Statement", description: "Track the movement of cash in and out of your business.", icon: Banknote, link: "/reports/cash-flow", available: true },
+    { title: "Client Report", description: "Insights into your client base, sales, and interactions.", icon: Users, link: "/reports/clients", available: true },
+    { title: "Inventory Summary", description: "Overview of stock levels, values, and movement.", icon: BarChart3, link: "/reports/inventory", available: true },
   ];
 
   return (
@@ -63,3 +63,4 @@ export default function ReportsPage() {
     </AppLayout>
   );
 }
+
