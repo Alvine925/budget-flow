@@ -20,27 +20,25 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from 'next/navigation';
 
-const invoiceItemSchema = z.object({
+const quotationItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1."),
   unitPrice: z.coerce.number().positive("Unit price must be positive."),
-  // total will be calculated
 });
 
-const invoiceFormSchema = z.object({
+const quotationFormSchema = z.object({
   client: z.string().min(1, "Client selection is required."),
-  invoiceNumber: z.string().min(1, "Invoice number is required."),
+  quotationNumber: z.string().min(1, "Quotation number is required."),
   issueDate: z.date({ required_error: "Issue date is required." }),
-  dueDate: z.date({ required_error: "Due date is required." }),
-  items: z.array(invoiceItemSchema).min(1, "At least one item is required."),
+  expiryDate: z.date({ required_error: "Expiry date is required." }),
+  items: z.array(quotationItemSchema).min(1, "At least one item is required."),
   notes: z.string().optional(),
-  // subtotal, tax, total will be calculated
 });
 
-type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
+type QuotationFormValues = z.infer<typeof quotationFormSchema>;
 
-// Mock data
 const clients = [
   { value: "client_1", label: "Acme Corp" },
   { value: "client_2", label: "Beta Solutions" },
@@ -56,31 +54,36 @@ const availableItems = [
 
 const TAX_RATE = 0.1; // Example 10% tax rate
 
-export default function NewInvoicePage() {
+export default function NewQuotationPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [total, setTotal] = useState(0);
   
-  const form = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceFormSchema),
+  const form = useForm<QuotationFormValues>({
+    resolver: zodResolver(quotationFormSchema),
     defaultValues: {
-      client: undefined,
-      invoiceNumber: "", 
+      client: searchParams.get('client') || undefined,
+      quotationNumber: "", 
       issueDate: undefined, 
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
-      notes: "Thank you for your business!",
+      notes: "This quotation is valid for 30 days.",
     },
   });
 
   useEffect(() => {
-    if (!form.getValues("invoiceNumber")) {
-      form.setValue("invoiceNumber", `INV-${String(Date.now()).slice(-4)}`);
+    if (!form.getValues("quotationNumber")) {
+      form.setValue("quotationNumber", `QT-${String(Date.now()).slice(-4)}`);
     }
     if (!form.getValues("issueDate")) {
       form.setValue("issueDate", new Date());
     }
-  }, [form]);
+    const clientParam = searchParams.get('client');
+    if (clientParam && !form.getValues("client")) {
+        form.setValue("client", clientParam);
+    }
+  }, [form, searchParams]);
 
 
   const { fields, append, remove } = useFieldArray({
@@ -102,19 +105,19 @@ export default function NewInvoicePage() {
   }, [watchedItems]);
 
 
-  function onSubmit(data: InvoiceFormValues) {
-    console.log("Sending Invoice:", { ...data, subtotal, taxAmount, total });
+  function onSubmit(data: QuotationFormValues) {
+    console.log("Sending Quotation:", { ...data, subtotal, taxAmount, total });
     toast({
-      title: "Invoice Sent",
-      description: `Invoice ${data.invoiceNumber} for ${clients.find(c => c.value === data.client)?.label} has been successfully sent.`,
+      title: "Quotation Sent",
+      description: `Quotation ${data.quotationNumber} for ${clients.find(c => c.value === data.client)?.label} has been successfully sent.`,
     });
     form.reset({
         client: undefined,
-        invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
+        quotationNumber: `QT-${String(Date.now()).slice(-4)}`,
         issueDate: new Date(),
-        dueDate: undefined,
+        expiryDate: undefined,
         items: [{ description: "", quantity: 1, unitPrice: 0 }],
-        notes: "Thank you for your business!",
+        notes: "This quotation is valid for 30 days.",
     });
   }
 
@@ -122,19 +125,18 @@ export default function NewInvoicePage() {
     const data = form.getValues();
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
     toast({
-      title: "Invoice Draft Saved",
-      description: `Invoice ${data.invoiceNumber} has been saved as a draft.`,
+      title: "Quotation Draft Saved",
+      description: `Quotation ${data.quotationNumber} has been saved as a draft.`,
     });
   };
 
   const handlePreview = () => {
     const data = form.getValues();
-    console.log("Previewing Invoice:", { ...data, subtotal, taxAmount, total });
+    console.log("Previewing Quotation:", { ...data, subtotal, taxAmount, total });
     toast({
-      title: "Invoice Preview Generated (Mock)",
-      description: "This is a mock preview. In a real app, a modal or new tab would show the invoice.",
+      title: "Quotation Preview Generated (Mock)",
+      description: "This is a mock preview. In a real app, a modal or new tab would show the quotation.",
     });
-    // In a real app, this would open a modal or new tab with the invoice preview
   };
   
   const handleItemDescriptionChange = (index: number, value: string) => {
@@ -150,12 +152,12 @@ export default function NewInvoicePage() {
 
   const resetForm = () => {
     form.reset({
-      client: undefined,
-      invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
+      client: searchParams.get('client') || undefined,
+      quotationNumber: `QT-${String(Date.now()).slice(-4)}`,
       issueDate: new Date(),
-      dueDate: undefined,
+      expiryDate: undefined,
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
-      notes: "Thank you for your business!",
+      notes: "This quotation is valid for 30 days.",
     });
   };
 
@@ -167,8 +169,8 @@ export default function NewInvoicePage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle>Create New Invoice</CardTitle>
-                <CardDescription>Fill in the details to generate a new invoice.</CardDescription>
+                <CardTitle>Create New Quotation</CardTitle>
+                <CardDescription>Fill in the details to generate a new quotation.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -198,10 +200,10 @@ export default function NewInvoicePage() {
                   />
                   <FormField
                     control={form.control}
-                    name="invoiceNumber"
+                    name="quotationNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Invoice Number</FormLabel>
+                        <FormLabel>Quotation Number</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -239,10 +241,10 @@ export default function NewInvoicePage() {
                   />
                   <FormField
                     control={form.control}
-                    name="dueDate"
+                    name="expiryDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Due Date</FormLabel>
+                        <FormLabel>Expiry Date</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -269,7 +271,7 @@ export default function NewInvoicePage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Invoice Items</CardTitle>
+                <CardTitle>Quotation Items</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -313,7 +315,7 @@ export default function NewInvoicePage() {
                                   <Input 
                                     className="mt-1"
                                     placeholder="Custom item description"
-                                    defaultValue={form.getValues(`items.${index}.description`)} // Keep existing manual input
+                                    defaultValue={form.getValues(`items.${index}.description`)} 
                                     onChange={(e) => form.setValue(`items.${index}.description`, e.target.value)}
                                   />
                                 )}
@@ -395,7 +397,7 @@ export default function NewInvoicePage() {
                     <FormItem>
                       <FormLabel>Notes / Terms & Conditions</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., Payment is due within 30 days. Late fees may apply." {...field} rows={4}/>
+                        <Textarea placeholder="e.g., This quotation is valid for 30 days." {...field} rows={4}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -407,13 +409,13 @@ export default function NewInvoicePage() {
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
               <Button type="button" variant="outline" onClick={handlePreview}>
-                <Eye className="mr-2 h-4 w-4" /> Preview Invoice
+                <Eye className="mr-2 h-4 w-4" /> Preview Quotation
               </Button>
               <Button type="button" variant="secondary" onClick={handleSaveDraft}>
                 <Save className="mr-2 h-4 w-4" /> Save Draft
               </Button>
               <Button type="submit">
-                <Send className="mr-2 h-4 w-4" /> Send Invoice
+                <Send className="mr-2 h-4 w-4" /> Send Quotation
               </Button>
             </div>
           </form>

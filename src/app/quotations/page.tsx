@@ -1,4 +1,5 @@
 
+
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -69,7 +70,7 @@ export default function QuotationsPage() {
                 <DropdownMenuCheckboxItem>Expired</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/quotations/new"> {/* Link to /quotations/new */}
+            <Link href="/quotations/new">
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Quotation
               </Button>
@@ -121,9 +122,11 @@ export default function QuotationsPage() {
                            <DropdownMenuItem>
                             <FileText className="mr-2 h-4 w-4" /> View Quotation
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
+                           <DropdownMenuItem asChild>
+                             <Link href={`/quotations/new?edit=${quotation.id}`}> {/* Assuming edit uses same page with ID */}
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </Link>
+                           </DropdownMenuItem>
                            {quotation.status === "Draft" && (
                             <DropdownMenuItem>
                               <Send className="mr-2 h-4 w-4" /> Send to Client
@@ -135,8 +138,10 @@ export default function QuotationsPage() {
                             </DropdownMenuItem>
                           )}
                           {quotation.status === "Accepted" && (
-                            <DropdownMenuItem>
-                              <CheckSquare className="mr-2 h-4 w-4" /> Convert to Invoice
+                            <DropdownMenuItem asChild>
+                               <Link href={`/invoices/new?fromQuotation=${quotation.id}`}>
+                                <CheckSquare className="mr-2 h-4 w-4" /> Convert to Invoice
+                               </Link>
                             </DropdownMenuItem>
                           )}
                            <DropdownMenuSeparator />
@@ -161,3 +166,6 @@ export default function QuotationsPage() {
     </AppLayout>
   );
 }
+
+
+    

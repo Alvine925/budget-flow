@@ -1,4 +1,5 @@
 
+
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,6 +17,8 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+
 
 // Mock data for invoices
 const invoices = [
@@ -27,6 +30,28 @@ const invoices = [
 ];
 
 export default function InvoicesPage() {
+  const { toast } = useToast();
+
+  const handleViewInvoice = (invoiceId: string) => {
+    // Mock action: In a real app, this would navigate to an invoice detail page or open a preview modal.
+    console.log(`Viewing invoice: ${invoiceId}`);
+    toast({ title: "View Invoice (Mock)", description: `Displaying details for invoice ${invoiceId}.` });
+  };
+
+  const handleSendReminder = (invoiceId: string) => {
+     // Mock action
+    console.log(`Sending reminder for invoice: ${invoiceId}`);
+    toast({ title: "Reminder Sent (Mock)", description: `Payment reminder sent for invoice ${invoiceId}.` });
+  };
+
+   const handleDeleteInvoice = (invoiceId: string) => {
+    // Mock action
+    console.log(`Deleting invoice: ${invoiceId}`);
+    toast({ title: "Invoice Deleted (Mock)", description: `Invoice ${invoiceId} has been deleted.`, variant: "destructive" });
+    // Here you would filter out the invoice from your state
+  };
+
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
       case "paid":
@@ -124,19 +149,21 @@ export default function InvoicesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewInvoice(invoice.id)}>
                             <FileText className="mr-2 h-4 w-4" /> View Invoice
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          <DropdownMenuItem asChild>
+                            <Link href={`/invoices/new?edit=${invoice.id}`}> {/* Assuming edit uses same form with ID */}
+                               <Edit className="mr-2 h-4 w-4" /> Edit
+                            </Link>
                           </DropdownMenuItem>
                           {invoice.status !== "Paid" && (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendReminder(invoice.id)}>
                               <Send className="mr-2 h-4 w-4" /> Send Reminder
                             </DropdownMenuItem>
                           )}
                            <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+                          <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={() => handleDeleteInvoice(invoice.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -158,3 +185,4 @@ export default function InvoicesPage() {
   );
 }
 
+    
