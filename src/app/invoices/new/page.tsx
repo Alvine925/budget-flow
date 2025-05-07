@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarIcon, PlusCircle, Trash2, Eye, Save, Send } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { CalendarIcon, PlusCircle, Trash2, Eye, Save, Send, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import React, { useState, useEffect } from "react";
@@ -20,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Item description is required."),
@@ -42,9 +44,9 @@ type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
 // Mock data
 const clients = [
-  { value: "client_1", label: "Acme Corp" },
-  { value: "client_2", label: "Beta Solutions" },
-  { value: "client_3", label: "Gamma Inc." },
+  { value: "client_1", label: "Acme Corp", address: "123 Main St, Anytown USA", email: "john.doe@acme.com" },
+  { value: "client_2", label: "Beta Solutions", address: "456 Oak Ave, Otherville USA", email: "jane.smith@beta.io" },
+  { value: "client_3", label: "Gamma Inc.", address: "789 Pine Ln, Sometown USA", email: "robert.b@gamma.co" },
 ];
 
 const availableItems = [
@@ -54,20 +56,41 @@ const availableItems = [
   { value: "item_4", label: "Custom Development", price: 80 },
 ];
 
+// Mock Company Data (replace with actual data source later)
+const companyDetails = {
+  name: "BudgetFlow Inc.",
+  address: "99 Innovation Drive, Tech City, USA",
+  email: "billing@budgetflow.com",
+  phone: "555-FLOW",
+  logoUrl: "https://picsum.photos/seed/budgetflow/100/40", // Placeholder logo
+  aiHint: "company logo"
+};
+
+
 const TAX_RATE = 0.1; // Example 10% tax rate
+
+interface PreviewData extends InvoiceFormValues {
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  clientDetails?: typeof clients[0];
+  companyDetails: typeof companyDetails;
+}
 
 export default function NewInvoicePage() {
   const { toast } = useToast();
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [total, setTotal] = useState(0);
-  
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
       client: undefined,
-      invoiceNumber: "", 
-      issueDate: undefined, 
+      invoiceNumber: "",
+      issueDate: undefined,
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
       notes: "Thank you for your business!",
     },
@@ -105,45 +128,46 @@ export default function NewInvoicePage() {
   function onSubmit(data: InvoiceFormValues) {
     console.log("Sending Invoice:", { ...data, subtotal, taxAmount, total });
     toast({
-      title: "Invoice Sent",
-      description: `Invoice ${data.invoiceNumber} for ${clients.find(c => c.value === data.client)?.label} has been successfully sent.`,
+      title: "Invoice Sent (Mock)",
+      description: `Invoice ${data.invoiceNumber} for ${clients.find(c => c.value === data.client)?.label} has been 'sent'.`,
     });
-    form.reset({
-        client: undefined,
-        invoiceNumber: `INV-${String(Date.now()).slice(-4)}`,
-        issueDate: new Date(),
-        dueDate: undefined,
-        items: [{ description: "", quantity: 1, unitPrice: 0 }],
-        notes: "Thank you for your business!",
-    });
+    resetForm(); // Reset form after simulated send
   }
 
   const handleSaveDraft = () => {
     const data = form.getValues();
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
     toast({
-      title: "Invoice Draft Saved",
-      description: `Invoice ${data.invoiceNumber} has been saved as a draft.`,
+      title: "Invoice Draft Saved (Mock)",
+      description: `Invoice ${data.invoiceNumber} has been 'saved' as a draft.`,
     });
+    // Don't reset form for draft saving
   };
 
   const handlePreview = () => {
     const data = form.getValues();
-    console.log("Previewing Invoice:", { ...data, subtotal, taxAmount, total });
-    toast({
-      title: "Invoice Preview Generated (Mock)",
-      description: "This is a mock preview. In a real app, a modal or new tab would show the invoice.",
-    });
-    // In a real app, this would open a modal or new tab with the invoice preview
+    const clientDetails = clients.find(c => c.value === data.client);
+    const fullPreviewData: PreviewData = {
+        ...data,
+        subtotal,
+        taxAmount,
+        total,
+        clientDetails: clientDetails || undefined, // Attach found client details
+        companyDetails: companyDetails // Attach company details
+    };
+    setPreviewData(fullPreviewData);
+    setIsPreviewOpen(true);
+    // No toast for preview, just open the sheet
+    console.log("Previewing Invoice:", fullPreviewData);
   };
-  
+
   const handleItemDescriptionChange = (index: number, value: string) => {
     const selectedItem = availableItems.find(item => item.value === value);
     if (selectedItem) {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
     } else {
-       form.setValue(`items.${index}.description`, ''); 
+       form.setValue(`items.${index}.description`, '');
        form.setValue(`items.${index}.unitPrice`, 0);
     }
   };
@@ -165,6 +189,7 @@ export default function NewInvoicePage() {
       <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* ... Form Cards for Client, Dates, Items, Notes ... */}
             <Card>
               <CardHeader>
                 <CardTitle>Create New Invoice</CardTitle>
@@ -267,7 +292,7 @@ export default function NewInvoicePage() {
               </CardContent>
             </Card>
 
-            <Card>
+             <Card>
               <CardHeader>
                 <CardTitle>Invoice Items</CardTitle>
               </CardHeader>
@@ -292,7 +317,7 @@ export default function NewInvoicePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <Select onValueChange={(value) => {
-                                  field.onChange(value); 
+                                  field.onChange(value);
                                   handleItemDescriptionChange(index, value);
                                 }} value={field.value || ""}>
                                   <FormControl>
@@ -310,7 +335,7 @@ export default function NewInvoicePage() {
                                   </SelectContent>
                                 </Select>
                                 {(field.value === 'custom' || (!field.value && form.getValues(`items.${index}.description`)) || (field.value && !availableItems.find(i => i.value === field.value) && form.getValues(`items.${index}.description`) !== availableItems.find(i => i.value === field.value)?.label)) && (
-                                  <Input 
+                                  <Input
                                     className="mt-1"
                                     placeholder="Custom item description"
                                     defaultValue={form.getValues(`items.${index}.description`)} // Keep existing manual input
@@ -383,7 +408,7 @@ export default function NewInvoicePage() {
               </CardFooter>
             </Card>
 
-            <Card>
+             <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>
               </CardHeader>
@@ -404,6 +429,7 @@ export default function NewInvoicePage() {
               </CardContent>
             </Card>
 
+
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
               <Button type="button" variant="outline" onClick={handlePreview}>
@@ -419,8 +445,112 @@ export default function NewInvoicePage() {
           </form>
         </Form>
       </div>
+
+      {/* Invoice Preview Sheet */}
+      <Sheet open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <SheetContent className="w-full max-w-xl sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Invoice Preview</SheetTitle>
+            <SheetDescription>Review the invoice before sending.</SheetDescription>
+          </SheetHeader>
+          <div className="py-6 px-2">
+            {previewData ? (
+              <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-primary">{previewData.companyDetails.name}</h2>
+                    <p className="text-sm text-muted-foreground">{previewData.companyDetails.address}</p>
+                    <p className="text-sm text-muted-foreground">{previewData.companyDetails.email} | {previewData.companyDetails.phone}</p>
+                  </div>
+                  <div className="text-right">
+                     <img src={previewData.companyDetails.logoUrl} alt="Company Logo" className="h-10 mb-2 ml-auto" data-ai-hint={previewData.companyDetails.aiHint}/>
+                    <h3 className="text-xl font-semibold">INVOICE</h3>
+                    <p className="text-sm text-muted-foreground"># {previewData.invoiceNumber}</p>
+                  </div>
+                </div>
+
+                {/* Client and Dates */}
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div>
+                    <h4 className="font-semibold mb-1">Bill To:</h4>
+                    {previewData.clientDetails ? (
+                       <>
+                        <p>{previewData.clientDetails.label}</p>
+                        <p className="text-sm text-muted-foreground">{previewData.clientDetails.address}</p>
+                        <p className="text-sm text-muted-foreground">{previewData.clientDetails.email}</p>
+                       </>
+                    ) : (
+                       <p className="text-destructive">Client details not found.</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p><span className="font-semibold">Issue Date:</span> {previewData.issueDate ? format(previewData.issueDate, "PPP") : 'N/A'}</p>
+                    <p><span className="font-semibold">Due Date:</span> {previewData.dueDate ? format(previewData.dueDate, "PPP") : 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.items.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell className="text-center">{item.quantity}</TableCell>
+                        <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {/* Totals */}
+                <div className="flex justify-end mt-6">
+                  <div className="w-full max-w-xs space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span>${previewData.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Tax ({ (TAX_RATE * 100).toFixed(0) }%):</span>
+                      <span>${previewData.taxAmount.toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total Due:</span>
+                      <span>${previewData.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                 {/* Notes */}
+                {previewData.notes && (
+                  <div className="mt-8 pt-4 border-t">
+                    <h4 className="font-semibold mb-1">Notes:</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{previewData.notes}</p>
+                  </div>
+                )}
+
+              </div>
+            ) : (
+              <p>Loading preview data...</p>
+            )}
+          </div>
+           <SheetFooter className="p-4 border-t">
+             <Button variant="outline" onClick={() => setIsPreviewOpen(false)}>Close Preview</Button>
+             {/* Add print button if needed */}
+             {/* <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4"/> Print</Button> */}
+           </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
-
-    
