@@ -1,17 +1,18 @@
+
 "use client";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, FileSpreadsheet, TrendingUp, Banknote, Users, Download, CalendarDays } from "lucide-react";
+import { BarChart3, FileSpreadsheet, TrendingUp, Banknote, Users, Download, CalendarDays, ListChecks, PieChartIcon } from "lucide-react";
 import Link from "next/link";
-import { DatePickerWithRange } from "@/components/date-range-picker"; // Assume this component exists
+import { DatePickerWithRange } from "@/components/date-range-picker"; 
 
 export default function ReportsPage() {
   const reports = [
     { title: "Profit & Loss Statement", description: "View your income, expenses, and net profit over a period.", icon: FileSpreadsheet, link: "/reports/profit-loss", available: true },
-    { title: "Balance Sheet", description: "Snapshot of your company's assets, liabilities, and equity.", icon: Banknote, link: "/reports/balance-sheet", available: true },
-    { title: "Sales Report", description: "Analyze sales performance by product, client, or period.", icon: TrendingUp, link: "/reports/sales", available: true },
-    { title: "Expense Report", description: "Detailed breakdown of expenses by category or vendor.", icon: TrendingUp, props: {className:"rotate-180"}, link: "/reports/expenses", available: true },
+    { title: "Balance Sheet", description: "Snapshot of your company's assets, liabilities, and equity.", icon: ListChecks, link: "/reports/balance-sheet", available: true },
+    { title: "Sales Summary Report", description: "Analyze sales performance by product, client, or period.", icon: TrendingUp, link: "/reports/sales-summary", available: true },
+    { title: "Expense Summary Report", description: "Detailed breakdown of expenses by category or vendor.", icon: PieChartIcon, link: "/reports/expense-summary", available: true },
     { title: "Cash Flow Statement", description: "Track the movement of cash in and out of your business.", icon: Banknote, link: "/reports/cash-flow", available: false },
     { title: "Client Report", description: "Insights into your client base, sales, and interactions.", icon: Users, link: "/reports/clients", available: false },
     { title: "Inventory Summary", description: "Overview of stock levels, values, and movement.", icon: BarChart3, link: "/reports/inventory", available: false },
@@ -24,7 +25,7 @@ export default function ReportsPage() {
           <h1 className="text-3xl font-semibold text-foreground">Financial Reports</h1>
           <div className="flex items-center gap-2">
              <DatePickerWithRange />
-            <Button variant="outline">
+            <Button variant="outline" disabled> {/* Placeholder for future functionality */}
               <Download className="mr-2 h-4 w-4" /> Export All (PDF)
             </Button>
           </div>
