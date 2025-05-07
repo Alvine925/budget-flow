@@ -24,15 +24,26 @@ const currencyConverterSchema = z.object({
 
 type CurrencyConverterFormValues = z.infer<typeof currencyConverterSchema>;
 
-// Expanded list of available currencies
+// Expanded list of available currencies to over 100, including all African currencies
 const availableCurrencies = [
-  "USD", "EUR", "GBP", "CAD", "JPY", "AUD", "CHF", "CNY", "HKD", "NZD",
-  "SEK", "KRW", "SGD", "NOK", "MXN", "INR", "RUB", "ZAR", "TRY", "BRL",
-  "TWD", "DKK", "PLN", "THB", "IDR", "HUF", "CZK", "ILS", "CLP", "PHP",
-  "AED", "COP", "SAR", "MYR", "RON", "VND", "NGN", "UAH", "ARS", "IQD",
-  "KWD", "QAR", "OMR", "BHD", "JOD", "EGP", "LBP", "MAD", "PKR", "BDT",
-  "LKR", "KES", "GHS", "TZS", "UGX"
-];
+  "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", 
+  "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD", 
+  "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", 
+  "CRC", "CUP", "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", 
+  "ETB", "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF", 
+  "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR", "IQD", 
+  "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR", "KMF", "KPW", 
+  "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", 
+  "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", 
+  "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", 
+  "OMR", "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", 
+  "RSD", "RUB", "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", 
+  "SLE", "SLL", "SOS", "SRD", "SSP", "STN", "SYP", "SZL", "THB", "TJS", 
+  "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX", "USD", 
+  "UYU", "UZS", "VES", "VND", "VUV", "WST", "XAF", "XCD", "XOF", "XPF", 
+  "YER", "ZAR", "ZMW", "ZWL"
+].sort();
+
 
 export default function CurrencySettingsPage() {
   const { toast } = useToast();
