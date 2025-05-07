@@ -17,11 +17,11 @@ export function createClient() {
    // Check if variables exist
    if (!supabaseUrl) {
      console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_URL");
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please update your .env file.");
+    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please check your .env file.");
   }
   if (!supabaseAnonKey) {
     console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please update your .env file.");
+    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check your .env file.");
   }
 
   // Check if variables are still placeholders
