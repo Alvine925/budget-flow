@@ -31,18 +31,77 @@ const currencies = [
   { value: "EUR", label: "EUR - Euro" },
   { value: "GBP", label: "GBP - British Pound Sterling" },
   { value: "CAD", label: "CAD - Canadian Dollar" },
+  { value: "JPY", label: "JPY - Japanese Yen" },
+  { value: "AUD", label: "AUD - Australian Dollar" },
+  { value: "CHF", label: "CHF - Swiss Franc" },
+  { value: "CNY", label: "CNY - Chinese Yuan Renminbi" },
+  { value: "HKD", label: "HKD - Hong Kong Dollar" },
+  { value: "NZD", label: "NZD - New Zealand Dollar" },
+  { value: "SEK", label: "SEK - Swedish Krona" },
+  { value: "KRW", label: "KRW - South Korean Won" },
+  { value: "SGD", label: "SGD - Singapore Dollar" },
+  { value: "NOK", label: "NOK - Norwegian Krone" },
+  { value: "MXN", label: "MXN - Mexican Peso" },
+  { value: "INR", label: "INR - Indian Rupee" },
+  { value: "RUB", label: "RUB - Russian Ruble" },
+  { value: "ZAR", label: "ZAR - South African Rand" },
+  { value: "TRY", label: "TRY - Turkish Lira" },
+  { value: "BRL", label: "BRL - Brazilian Real" },
+  { value: "TWD", label: "TWD - New Taiwan Dollar" },
+  { value: "DKK", label: "DKK - Danish Krone" },
+  { value: "PLN", label: "PLN - Polish Złoty" },
+  { value: "THB", label: "THB - Thai Baht" },
+  { value: "IDR", label: "IDR - Indonesian Rupiah" },
+  { value: "HUF", label: "HUF - Hungarian Forint" },
+  { value: "CZK", label: "CZK - Czech Koruna" },
+  { value: "ILS", label: "ILS - Israeli New Shekel" },
+  { value: "CLP", label: "CLP - Chilean Peso" },
+  { value: "PHP", label: "PHP - Philippine Peso" },
+  { value: "AED", label: "AED - UAE Dirham" },
+  { value: "COP", label: "COP - Colombian Peso" },
+  { value: "SAR", label: "SAR - Saudi Riyal" },
+  { value: "MYR", label: "MYR - Malaysian Ringgit" },
+  { value: "RON", label: "RON - Romanian Leu" },
+  { value: "VND", label: "VND - Vietnamese Đồng" },
+  { value: "NGN", label: "NGN - Nigerian Naira" },
+  { value: "UAH", label: "UAH - Ukrainian Hryvnia" },
+  { value: "ARS", label: "ARS - Argentine Peso" },
+  { value: "IQD", label: "IQD - Iraqi Dinar" },
+  { value: "KWD", label: "KWD - Kuwaiti Dinar" },
+  { value: "QAR", label: "QAR - Qatari Riyal" },
+  { value: "OMR", label: "OMR - Omani Rial" },
+  { value: "BHD", label: "BHD - Bahraini Dinar" },
+  { value: "JOD", label: "JOD - Jordanian Dinar" },
+  { value: "EGP", label: "EGP - Egyptian Pound" },
+  { value: "LBP", label: "LBP - Lebanese Pound" },
+  { value: "MAD", label: "MAD - Moroccan Dirham" },
+  { value: "PKR", label: "PKR - Pakistani Rupee" },
+  { value: "BDT", label: "BDT - Bangladeshi Taka" },
+  { value: "LKR", label: "LKR - Sri Lankan Rupee" },
+  { value: "KES", label: "KES - Kenyan Shilling" },
+  { value: "GHS", label: "GHS - Ghanaian Cedi" },
+  { value: "TZS", label: "TZS - Tanzanian Shilling" },
+  { value: "UGX", label: "UGX - Ugandan Shilling" }
 ];
+
 
 const dateFormats = [
   { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+  { value: "DD-MMM-YYYY", label: "DD-MMM-YYYY"},
+  { value: "MMM DD, YYYY", label: "MMM DD, YYYY"},
 ];
 
 const timezones = [
   { value: "America/New_York", label: "America/New_York (EST/EDT)" },
   { value: "Europe/London", label: "Europe/London (GMT/BST)" },
   { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+  { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)"},
+  { value: "Europe/Paris", label: "Europe/Paris (CET/CEST)"},
+  { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)"},
+  { value: "Asia/Dubai", label: "Asia/Dubai (GST)"},
+  { value: "Asia/Kolkata", label: "Asia/Kolkata (IST)"},
 ];
 
 export default function GeneralSettingsPage() {
@@ -135,7 +194,11 @@ export default function GeneralSettingsPage() {
                         <FormLabel>Default Currency</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
-                          <SelectContent>{currencies.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                          <SelectContent>
+                            {currencies.map(c => (
+                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                            ))}
+                          </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
@@ -182,3 +245,4 @@ export default function GeneralSettingsPage() {
     </AppLayout>
   );
 }
+

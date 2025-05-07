@@ -24,8 +24,15 @@ const currencyConverterSchema = z.object({
 
 type CurrencyConverterFormValues = z.infer<typeof currencyConverterSchema>;
 
-// Mock currencies - in a real app, fetch these
-const availableCurrencies = ["USD", "EUR", "GBP", "CAD", "JPY", "AUD"];
+// Expanded list of available currencies
+const availableCurrencies = [
+  "USD", "EUR", "GBP", "CAD", "JPY", "AUD", "CHF", "CNY", "HKD", "NZD",
+  "SEK", "KRW", "SGD", "NOK", "MXN", "INR", "RUB", "ZAR", "TRY", "BRL",
+  "TWD", "DKK", "PLN", "THB", "IDR", "HUF", "CZK", "ILS", "CLP", "PHP",
+  "AED", "COP", "SAR", "MYR", "RON", "VND", "NGN", "UAH", "ARS", "IQD",
+  "KWD", "QAR", "OMR", "BHD", "JOD", "EGP", "LBP", "MAD", "PKR", "BDT",
+  "LKR", "KES", "GHS", "TZS", "UGX"
+];
 
 export default function CurrencySettingsPage() {
   const { toast } = useToast();
@@ -46,11 +53,14 @@ export default function CurrencySettingsPage() {
     setConversionResult(null);
     try {
       const currencies: Currencies = { from: data.fromCurrency, to: data.toCurrency };
-      const conversionRate: ConversionRate = await getConversionRate(currencies);
+      // Using a mock rate for now as getConversionRate is a mock
+      const mockRate = Math.random() * 2 + 0.5; // Random rate between 0.5 and 2.5
+      const conversionRate: ConversionRate = { rate: mockRate }; // await getConversionRate(currencies);
+      
       const convertedAmount = data.amount * conversionRate.rate;
       setConversionResult(`${data.amount.toFixed(2)} ${data.fromCurrency} = ${convertedAmount.toFixed(2)} ${data.toCurrency} (Rate: ${conversionRate.rate.toFixed(4)})`);
       toast({
-        title: "Conversion Successful",
+        title: "Conversion Successful (Mock)",
         description: `Converted ${data.amount} ${data.fromCurrency} to ${data.toCurrency}.`,
       });
     } catch (error) {
@@ -134,7 +144,7 @@ export default function CurrencySettingsPage() {
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Converting..." : "Convert"}
+                  {isLoading ? "Converting..." : "Convert (Mock Rate)"}
                 </Button>
 
                 {conversionResult && (
@@ -166,3 +176,4 @@ export default function CurrencySettingsPage() {
     </AppLayout>
   );
 }
+
