@@ -28,6 +28,7 @@ import {
   Palette,
   ShieldCheck,
   Bell,
+  LayoutList, // Added LayoutList
 } from "lucide-react";
 import {
   Sidebar,
@@ -93,6 +94,7 @@ const navItems: NavItem[] = [
       { href: "/settings/appearance", icon: Palette, label: "Appearance", group: "System" },
       { href: "/settings/security", icon: ShieldCheck, label: "Security", group: "System" },
       { href: "/settings/notifications", icon: Bell, label: "Notifications", group: "System" },
+      { href: "/settings/templates", icon: LayoutList, label: "Templates", group: "System" }, // Added Templates subItem
     ]
   },
 ];
@@ -183,3 +185,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

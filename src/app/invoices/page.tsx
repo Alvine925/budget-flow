@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Edit, Trash2, Filter, Send, FileText, MoreHorizontal } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Filter, Send, FileText, MoreHorizontal, Settings } from "lucide-react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -67,6 +67,14 @@ export default function InvoicesPage() {
                 <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link href="/settings/templates" passHref>
+              <Button variant="outline" size="sm" className="h-9 gap-1">
+                <Settings className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Template Settings
+                </span>
+              </Button>
+            </Link>
             <Link href="/invoices/new">
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
@@ -149,3 +157,4 @@ export default function InvoicesPage() {
     </AppLayout>
   );
 }
+

@@ -4,7 +4,7 @@
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Calculator, Coins, UserCog, Palette, ShieldCheck, Bell } from "lucide-react";
+import { Settings, Calculator, Coins, UserCog, Palette, ShieldCheck, Bell, LayoutList } from "lucide-react";
 import Link from "next/link";
 
 const settingsSections = [
@@ -15,6 +15,7 @@ const settingsSections = [
   { title: "Appearance", description: "Customize the look and feel of BudgetFlow.", icon: Palette, href: "/settings/appearance" },
   { title: "Security", description: "Manage your account security, 2FA, and active sessions.", icon: ShieldCheck, href: "/settings/security" },
   { title: "Notifications", description: "Configure your email and in-app notification preferences.", icon: Bell, href: "/settings/notifications" },
+  { title: "Templates", description: "Manage invoice and quotation templates.", icon: LayoutList, href: "/settings/templates" },
 ];
 
 export default function SettingsPage() {
@@ -51,3 +52,4 @@ export default function SettingsPage() {
     </AppLayout>
   );
 }
+
