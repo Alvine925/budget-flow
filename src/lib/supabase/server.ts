@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
  * Reads connection details from environment variables. Requires cookies() from next/headers.
  *
  * @returns {SupabaseClient} A Supabase client instance configured for server-side use.
- * @throws {Error} If Supabase URL or Anon Key environment variables are not set or are invalid placeholders.
+ * @throws {Error} If Supabase URL or Anon Key environment variables are not set.
  */
 export function createClient() {
   const cookieStore = cookies();
