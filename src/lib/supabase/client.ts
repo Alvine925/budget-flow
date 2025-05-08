@@ -8,8 +8,9 @@ import { createBrowserClient } from '@supabase/ssr';
  * @throws {Error} If Supabase URL or Anon Key environment variables are not set or invalid.
  */
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Trim potential whitespace
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   // Check if variables exist
   if (!supabaseUrl) {
@@ -23,7 +24,7 @@ export function createClient() {
 
   // Validate URL format (basic check)
   try {
-    new URL(supabaseUrl);
+    new URL(supabaseUrl); // Use trimmed URL
   } catch (error) {
      console.error(`Invalid Supabase URL format: ${supabaseUrl}`);
     throw new Error("Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL.");

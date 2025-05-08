@@ -15,41 +15,27 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Trim potential whitespace from environment variables
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   // ---- START: Environment Variable Validation ----
   // If Supabase is not configured, proceed without session handling
   if (!supabaseUrl) {
-    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL.");
-    // Optionally return response directly or throw error depending on desired behavior
+    console.warn("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Supabase client not initialized in middleware.");
     return response; // Proceed without Supabase client if URL is missing
   }
   if (!supabaseAnonKey) {
-    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-    // Optionally return response directly or throw error
+    console.warn("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Supabase client not initialized in middleware.");
     return response; // Proceed without Supabase client if key is missing
-  }
-
-  // Check for placeholder values (important!)
-  if (supabaseUrl === "YOUR_SUPABASE_URL") {
-    console.error("Middleware Error: Supabase URL is set to the placeholder value. Please update your .env file.");
-     // Optionally return response directly or throw error
-    return response; // Avoid creating client with placeholder
-  }
-  if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
-     console.error("Middleware Error: Supabase Anon Key is set to the placeholder value. Please update your .env file.");
-     // Optionally return response directly or throw error
-    return response; // Avoid creating client with placeholder
   }
 
   // Basic URL validation
   try {
-    new URL(supabaseUrl);
+    new URL(supabaseUrl); // Use the trimmed URL
   } catch (error) {
      console.error(`Middleware Error: Invalid Supabase URL format: ${supabaseUrl}`);
-     // Optionally return response directly or throw error
-     return response; // Avoid creating client with invalid URL
+     return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase configuration.' }, { status: 500 }); // Return error if config is invalid
   }
   // ---- END: Environment Variable Validation ----
 
