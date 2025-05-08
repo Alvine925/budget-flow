@@ -1,3 +1,4 @@
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -17,20 +18,21 @@ export function createClient() {
 
    // Check if variables exist
    if (!supabaseUrl) {
-     console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_URL");
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please check your .env file.");
+     console.error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_URL");
+    throw new Error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please check your .env file.");
   }
   if (!supabaseAnonKey) {
-    console.error("Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    throw new Error("Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check your .env file.");
+    console.error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check your .env file.");
   }
 
   // Validate URL format (basic check)
   try {
-    new URL(supabaseUrl); // Use trimmed URL
+    new URL(supabaseUrl);
   } catch (error) {
-    console.error(`Invalid Supabase URL format: ${supabaseUrl}`);
-    throw new Error("Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL.");
+    console.error(`Server: Invalid Supabase URL format: ${supabaseUrl}`);
+    console.error("Original error:", error); // Log the original error for more details
+    throw new Error(`Server: Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl}`);
   }
 
 
@@ -60,3 +62,4 @@ export function createClient() {
     },
   });
 }
+

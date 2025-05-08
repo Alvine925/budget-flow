@@ -1,3 +1,4 @@
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -20,22 +21,27 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   // ---- START: Environment Variable Validation ----
-  // If Supabase is not configured, proceed without session handling
   if (!supabaseUrl) {
-    console.warn("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Supabase client not initialized in middleware.");
+    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL.");
+    // Optionally return an error response, or just proceed without Supabase
+    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration (URL).' }, { status: 500 });
     return response; // Proceed without Supabase client if URL is missing
   }
   if (!supabaseAnonKey) {
-    console.warn("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Supabase client not initialized in middleware.");
+    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    // Optionally return an error response, or just proceed without Supabase
+    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration (Key).' }, { status: 500 });
     return response; // Proceed without Supabase client if key is missing
   }
 
   // Basic URL validation
   try {
-    new URL(supabaseUrl); // Use the trimmed URL
+    new URL(supabaseUrl);
   } catch (error) {
      console.error(`Middleware Error: Invalid Supabase URL format: ${supabaseUrl}`);
-     return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase configuration.' }, { status: 500 }); // Return error if config is invalid
+     console.error("Original error:", error); // Log original error
+     // Return a more specific error if config is invalid during middleware execution
+     return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase URL configuration detected in middleware.' }, { status: 500 });
   }
   // ---- END: Environment Variable Validation ----
 
@@ -84,7 +90,14 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session if expired - important for Server Components
   // https://supabase.com/docs/guides/auth/auth-helpers/nextjs#managing-session-with-middleware
-  await supabase.auth.getSession();
+  // This might fail if the URL/Key were syntactically valid but incorrect credentials
+  try {
+     await supabase.auth.getSession();
+  } catch (error) {
+     console.error("Middleware Error getting Supabase session:", error);
+     // Decide how to handle session errors - potentially redirect to login or show an error
+  }
+
 
   return response;
 }
@@ -101,3 +114,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
+

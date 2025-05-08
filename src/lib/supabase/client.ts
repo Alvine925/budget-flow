@@ -1,3 +1,4 @@
+
 import { createBrowserClient } from '@supabase/ssr';
 
 /**
@@ -24,12 +25,14 @@ export function createClient() {
 
   // Validate URL format (basic check)
   try {
-    new URL(supabaseUrl); // Use trimmed URL
+    new URL(supabaseUrl);
   } catch (error) {
      console.error(`Invalid Supabase URL format: ${supabaseUrl}`);
-    throw new Error("Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL.");
+     console.error("Original error:", error); // Log the original error for more details
+    throw new Error(`Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl}`);
   }
 
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
+
