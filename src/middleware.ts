@@ -19,14 +19,17 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase is not configured OR placeholder values are still present, proceed without session handling
-  if (!supabaseUrl || supabaseUrl === "YOUR_SUPABASE_URL" || !supabaseAnonKey || supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
+  // Removed check for placeholder URL - assuming .env is set correctly by user
+  if (!supabaseUrl || !supabaseAnonKey || supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
     if (!supabaseUrl || !supabaseAnonKey) {
        console.warn("Supabase environment variables not set, skipping auth middleware.");
-    } else {
+    } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY"){
         console.warn("Supabase environment variables are set to placeholders, skipping auth middleware. Please update your .env file.");
     }
+    // Don't log if only the URL was the placeholder (which we now ignore)
     return response;
   }
+
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
