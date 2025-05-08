@@ -18,12 +18,40 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // ---- START: Environment Variable Validation ----
   // If Supabase is not configured, proceed without session handling
-  // Basic check for existence, detailed validation happens in client/server.ts
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase environment variables not set or invalid, skipping auth middleware.");
-    return response;
+  if (!supabaseUrl) {
+    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL.");
+    // Optionally return response directly or throw error depending on desired behavior
+    return response; // Proceed without Supabase client if URL is missing
   }
+  if (!supabaseAnonKey) {
+    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    // Optionally return response directly or throw error
+    return response; // Proceed without Supabase client if key is missing
+  }
+
+  // Check for placeholder values (important!)
+  if (supabaseUrl === "YOUR_SUPABASE_URL") {
+    console.error("Middleware Error: Supabase URL is set to the placeholder value. Please update your .env file.");
+     // Optionally return response directly or throw error
+    return response; // Avoid creating client with placeholder
+  }
+  if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY") {
+     console.error("Middleware Error: Supabase Anon Key is set to the placeholder value. Please update your .env file.");
+     // Optionally return response directly or throw error
+    return response; // Avoid creating client with placeholder
+  }
+
+  // Basic URL validation
+  try {
+    new URL(supabaseUrl);
+  } catch (error) {
+     console.error(`Middleware Error: Invalid Supabase URL format: ${supabaseUrl}`);
+     // Optionally return response directly or throw error
+     return response; // Avoid creating client with invalid URL
+  }
+  // ---- END: Environment Variable Validation ----
 
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
