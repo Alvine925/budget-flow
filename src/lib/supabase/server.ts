@@ -18,21 +18,21 @@ export function createClient() {
 
    // Check if variables exist
    if (!supabaseUrl) {
-     console.error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_URL");
-    throw new Error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Please check your .env file.");
+     console.error("Server Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file.");
+    throw new Error("Missing Supabase URL configuration.");
   }
   if (!supabaseAnonKey) {
-    console.error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    throw new Error("Server: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check your .env file.");
+    console.error("Server Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file.");
+    throw new Error("Missing Supabase Anon Key configuration.");
   }
 
   // Validate URL format (basic check)
   try {
     new URL(supabaseUrl);
-  } catch (error) {
-    console.error(`Server: Invalid Supabase URL format: ${supabaseUrl}`);
-    console.error("Original error:", error); // Log the original error for more details
-    throw new Error(`Server: Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl}`);
+  } catch (error: any) {
+    console.error(`Server Error: Invalid Supabase URL format: ${supabaseUrl}`);
+    console.error("Original URL validation error:", error); // Log the original error for more details
+    throw new Error(`Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl}. Please ensure it's a valid URL.`);
   }
 
 
@@ -62,4 +62,3 @@ export function createClient() {
     },
   });
 }
-

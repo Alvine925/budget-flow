@@ -21,32 +21,43 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   // ---- START: Environment Variable Validation ----
+  let hasConfigError = false;
   if (!supabaseUrl) {
-    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL.");
-    // Optionally return an error response, or just proceed without Supabase
-    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration (URL).' }, { status: 500 });
-    return response; // Proceed without Supabase client if URL is missing
+    console.error("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file and the server was restarted.");
+    hasConfigError = true;
+    // Allow request to proceed but log the error
+    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration.' }, { status: 500 });
   }
   if (!supabaseAnonKey) {
-    console.error("Middleware Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-    // Optionally return an error response, or just proceed without Supabase
-    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration (Key).' }, { status: 500 });
-    return response; // Proceed without Supabase client if key is missing
+    console.error("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file and the server was restarted.");
+    hasConfigError = true;
+     // Allow request to proceed but log the error
+    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration.' }, { status: 500 });
   }
 
-  // Basic URL validation
-  try {
-    new URL(supabaseUrl);
-  } catch (error) {
-     console.error(`Middleware Error: Invalid Supabase URL format: ${supabaseUrl}`);
-     console.error("Original error:", error); // Log original error
-     // Return a more specific error if config is invalid during middleware execution
-     return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase URL configuration detected in middleware.' }, { status: 500 });
+  // Basic URL validation only if URL is present
+  if (supabaseUrl && !hasConfigError) {
+      try {
+        new URL(supabaseUrl);
+      } catch (error: any) {
+         console.error(`Middleware Warning: Invalid Supabase URL format detected: ${supabaseUrl}. Please check NEXT_PUBLIC_SUPABASE_URL in your .env file.`);
+         console.error("Original URL validation error:", error); // Log original error
+         hasConfigError = true;
+         // Allow request to proceed, Supabase client initialization will likely fail later.
+         // return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase configuration detected in middleware.' }, { status: 500 });
+      }
   }
   // ---- END: Environment Variable Validation ----
 
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+  // If there was a configuration error logged above, skip Supabase client creation in middleware
+  if (hasConfigError) {
+      console.warn("Skipping Supabase client initialization in middleware due to configuration issues.");
+      return response;
+  }
+
+  // Proceed with Supabase client creation only if config seems okay so far
+  const supabase = createServerClient(supabaseUrl!, supabaseAnonKey!, {
     cookies: {
       get(name: string) {
         return request.cookies.get(name)?.value;
@@ -95,7 +106,7 @@ export async function middleware(request: NextRequest) {
      await supabase.auth.getSession();
   } catch (error) {
      console.error("Middleware Error getting Supabase session:", error);
-     // Decide how to handle session errors - potentially redirect to login or show an error
+     // Log the error but allow the request to proceed. Auth guards on pages should handle unauthorized access.
   }
 
 
@@ -114,4 +125,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
-
