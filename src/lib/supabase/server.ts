@@ -18,8 +18,8 @@ export function createClient() {
    if (!supabaseUrl) {
      console.error("SERVER Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is not set. Please check your .env file, ensure it contains the correct URL, and that the Next.js server has been restarted.");
     throw new Error("ConfigurationError: Supabase URL is missing. Check .env and restart server. See server logs for details.");
-  } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("http")) {
-    console.error(`SERVER Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is invalid or still a placeholder: '${supabaseUrl}'. Ensure your .env file has the correct URL and the server was restarted.`);
+  } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("https://")) {
+    console.error(`SERVER Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is invalid or still a placeholder: '${supabaseUrl}'. Ensure your .env file has the correct URL (starting with https://) and the server was restarted.`);
     throw new Error("ConfigurationError: Supabase URL is invalid or a placeholder. Check .env and restart server. See server logs for details.");
   }
 
@@ -62,3 +62,4 @@ export function createClient() {
     },
   });
 }
+
