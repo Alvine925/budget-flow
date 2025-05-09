@@ -5,6 +5,9 @@ import { createBrowserClient } from '@supabase/ssr';
  * Creates a Supabase client instance for use in browser environments (Client Components).
  * Reads connection details from environment variables prefixed with NEXT_PUBLIC_.
  *
+ * IMPORTANT: If you modify NEXT_PUBLIC_ environment variables, you MUST restart
+ * your Next.js development server for the changes to take effect on the client-side.
+ *
  * @returns {SupabaseClient} A Supabase client instance.
  * @throws {Error} If Supabase URL or Anon Key environment variables are not set or invalid.
  */
@@ -26,7 +29,7 @@ export function createClient() {
     throw new Error("ConfigurationError: Supabase Anon Key is missing. Check server logs for details.");
   } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY" || supabaseAnonKey.length < 20) {
     // Added length check
-     console.error(`CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Please check your .env file and restart the server.`);
+     console.error(`CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid: (length: ${supabaseAnonKey.length}). Please check your .env file and restart the server.`);
     throw new Error("ConfigurationError: Supabase Anon Key is invalid. Check server logs for details.");
   }
 
@@ -39,3 +42,4 @@ export function createClient() {
 
   return createBrowserClient(supabaseUrl!, supabaseAnonKey!);
 }
+
