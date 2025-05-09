@@ -9,29 +9,33 @@ import { createBrowserClient } from '@supabase/ssr';
  * @throws {Error} If Supabase URL or Anon Key environment variables are not set or invalid.
  */
 export function createClient() {
-  // Trim potential whitespace
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  // Check if variables exist
   if (!supabaseUrl) {
-    console.error("Client Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file and the Next.js development server was restarted.");
-    throw new Error("Missing Supabase URL configuration.");
-  }
-  if (!supabaseAnonKey) {
-     console.error("Client Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file and the Next.js development server was restarted.");
-    throw new Error("Missing Supabase Anon Key configuration.");
+    console.error("CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is not set. Please check your .env file and ensure the Next.js server has been restarted.");
+    throw new Error("ConfigurationError: Supabase URL is missing. Check server logs for details.");
+  } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("http")) {
+    // Added length and startsWith check for more robustness
+    console.error(`CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is invalid or a placeholder: '${supabaseUrl}'. Please check your .env file and restart the server.`);
+    throw new Error("ConfigurationError: Supabase URL is invalid. Check server logs for details.");
   }
 
-  // Validate URL format (basic check)
+  if (!supabaseAnonKey) {
+     console.error("CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please check your .env file and ensure the Next.js server has been restarted.");
+    throw new Error("ConfigurationError: Supabase Anon Key is missing. Check server logs for details.");
+  } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY" || supabaseAnonKey.length < 20) {
+    // Added length check
+     console.error(`CLIENT Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Please check your .env file and restart the server.`);
+    throw new Error("ConfigurationError: Supabase Anon Key is invalid. Check server logs for details.");
+  }
+
   try {
     new URL(supabaseUrl);
   } catch (error: any) {
-     console.error(`Client Error: Invalid Supabase URL format: ${supabaseUrl}`);
-     console.error("Original URL validation error:", error); // Log the original error for more details
-    throw new Error(`Invalid Supabase URL format provided in NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl}. Please ensure it's a valid URL.`);
+     console.error(`CLIENT Supabase Config Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}. Please ensure it's a valid URL (e.g., https://your-project-id.supabase.co) and restart the server.`);
+    throw new Error(`ConfigurationError: Supabase URL format invalid. Check server logs for details.`);
   }
 
-
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(supabaseUrl!, supabaseAnonKey!);
 }

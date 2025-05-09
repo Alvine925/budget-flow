@@ -16,99 +16,76 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Trim potential whitespace from environment variables
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  // ---- START: Environment Variable Validation ----
   let hasConfigError = false;
+
   if (!supabaseUrl) {
-    console.error("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file and the server was restarted.");
+    console.error("Middleware Critical Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file and the server was restarted.");
     hasConfigError = true;
-    // Allow request to proceed but log the error
-    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration.' }, { status: 500 });
-  }
-  if (!supabaseAnonKey) {
-    console.error("Middleware Warning: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file and the server was restarted.");
+  } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("http")) {
+    console.error(`Middleware Critical Error: NEXT_PUBLIC_SUPABASE_URL is invalid ('${supabaseUrl}'). Please update your .env file with your actual Supabase project URL.`);
     hasConfigError = true;
-     // Allow request to proceed but log the error
-    // return NextResponse.json({ error: 'Internal Server Error: Missing Supabase configuration.' }, { status: 500 });
   }
 
-  // Basic URL validation only if URL is present
-  if (supabaseUrl && !hasConfigError) {
+  if (!supabaseAnonKey) {
+    console.error("Middleware Critical Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file and the server was restarted.");
+    hasConfigError = true;
+  } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY" || supabaseAnonKey.length < 20) {
+     console.error(`Middleware Critical Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Please update your .env file.`);
+    hasConfigError = true;
+  }
+
+  if (supabaseUrl && !hasConfigError) { 
       try {
         new URL(supabaseUrl);
       } catch (error: any) {
-         console.error(`Middleware Warning: Invalid Supabase URL format detected: ${supabaseUrl}. Please check NEXT_PUBLIC_SUPABASE_URL in your .env file.`);
-         console.error("Original URL validation error:", error); // Log original error
+         console.error(`Middleware Critical Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}`);
          hasConfigError = true;
-         // Allow request to proceed, Supabase client initialization will likely fail later.
-         // return NextResponse.json({ error: 'Internal Server Error: Invalid Supabase configuration detected in middleware.' }, { status: 500 });
       }
   }
-  // ---- END: Environment Variable Validation ----
 
-
-  // If there was a configuration error logged above, skip Supabase client creation in middleware
   if (hasConfigError) {
-      console.warn("Skipping Supabase client initialization in middleware due to configuration issues.");
-      return response;
+      console.warn("Middleware: Supabase client initialization skipped due to configuration errors. The application might not function correctly. Please check server logs for details and ensure .env variables are correct and the server was restarted.");
+      return response; // Pass through, don't return JSON error
   }
 
-  // Proceed with Supabase client creation only if config seems okay so far
-  const supabase = createServerClient(supabaseUrl!, supabaseAnonKey!, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        request.cookies.set({
-          name,
-          value,
-          ...options,
-        });
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        });
-        response.cookies.set({
-          name,
-          value,
-          ...options,
-        });
-      },
-      remove(name: string, options: CookieOptions) {
-        request.cookies.set({
-          name,
-          value: '',
-          ...options,
-        });
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        });
-        response.cookies.set({
-          name,
-          value: '',
-          ...options,
-        });
-      },
-    },
-  });
-
-  // Refresh session if expired - important for Server Components
-  // https://supabase.com/docs/guides/auth/auth-helpers/nextjs#managing-session-with-middleware
-  // This might fail if the URL/Key were syntactically valid but incorrect credentials
   try {
-     await supabase.auth.getSession();
-  } catch (error) {
-     console.error("Middleware Error getting Supabase session:", error);
-     // Log the error but allow the request to proceed. Auth guards on pages should handle unauthorized access.
-  }
+    const supabase = createServerClient(supabaseUrl!, supabaseAnonKey!, {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            request.cookies.set({ name, value, ...options });
+            // Re-create response to apply updated cookies
+            response = NextResponse.next({ request: { headers: request.headers } });
+            response.cookies.set({ name, value, ...options });
+          } catch (e) { 
+            // Ignore errors if `set` is called from a Server Component - Supabase handles this.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            request.cookies.set({ name, value: '', ...options });
+            // Re-create response to apply updated cookies
+            response = NextResponse.next({ request: { headers: request.headers } });
+            response.cookies.set({ name, value: '', ...options });
+          } catch (e) {
+            // Ignore errors if `remove` is called from a Server Component - Supabase handles this.
+           }
+        },
+      },
+    });
 
+    await supabase.auth.getSession();
+  } catch (e: any) {
+    console.error("Middleware Exception during Supabase client initialization or getSession:", e.message);
+    // Log the error but still pass the request through.
+    // Subsequent page-level auth checks should handle failures.
+  }
 
   return response;
 }
