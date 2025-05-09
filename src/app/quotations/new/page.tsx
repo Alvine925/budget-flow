@@ -22,13 +22,13 @@ import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
-import { Separator } from "@/components/ui/separator"; // Import Separator
+import { Separator } from "@/components/ui/separator"; 
 import Image from 'next/image';
-// Import mock data only for initial values/fallback
+// Import mock data
 import { 
-  initialClients as mockClientsData, 
-  availableItems as mockItemsData, 
-  companyDetails as mockCompanyDetails, 
+  initialClients, 
+  initialItems, 
+  companyDetails, 
   TAX_RATE,
   type Client, 
   type Item 
@@ -41,7 +41,7 @@ const quotationItemSchema = z.object({
 });
 
 const quotationFormSchema = z.object({
-  client: z.string().min(1, "Client selection is required."), // Store client ID/value
+  client: z.string().min(1, "Client selection is required."), 
   quotationNumber: z.string().min(1, "Quotation number is required."),
   issueDate: z.date({ required_error: "Issue date is required." }),
   expiryDate: z.date({ required_error: "Expiry date is required." }),
@@ -55,15 +55,11 @@ interface PreviewData extends QuotationFormValues {
   subtotal: number;
   taxAmount: number;
   total: number;
-  clientDetails?: Client; // Use Client type
-  companyDetails: typeof mockCompanyDetails;
+  clientDetails?: Client; 
+  companyDetails: typeof companyDetails;
 }
 
-// localStorage keys
-const LOCAL_STORAGE_KEY_CLIENTS = 'budgetflow-clients';
-const LOCAL_STORAGE_KEY_ITEMS = 'budgetflow-items';
 
-// Map Item type from mockData to a simpler structure if needed, or use directly
 interface SelectableItem {
   value: string;
   label: string;
@@ -73,53 +69,21 @@ interface SelectableItem {
 export default function NewQuotationPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const [clients, setClients] = useState<Client[]>(mockClientsData); // Initialize with mock
+  // Use mock data directly
+  const [clients, setClients] = useState<Client[]>(initialClients); 
   const [availableItems, setAvailableItems] = useState<SelectableItem[]>(
-    mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price }))
-  ); // Initialize with mock
+    initialItems.map(item => ({ 
+        value: item.id, 
+        label: item.name, 
+        price: item.salePrice ?? 0 
+    }))
+  );
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [total, setTotal] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
-  const [companyDetails] = useState(mockCompanyDetails); // Assuming this doesn't change often
-
-  // Load clients and items from localStorage on mount
-  useEffect(() => {
-    // Load Clients
-    try {
-      const storedClients = localStorage.getItem(LOCAL_STORAGE_KEY_CLIENTS);
-      if (storedClients) {
-        setClients(JSON.parse(storedClients));
-      } else {
-        setClients(mockClientsData); // Fallback
-      }
-    } catch (error) {
-      console.error("Error loading clients from localStorage:", error);
-      setClients(mockClientsData); // Fallback
-    }
-
-    // Load Items
-    try {
-      const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY_ITEMS);
-      if (storedItems) {
-         // Assuming stored items match the 'Item' structure from items/page.tsx
-         const parsedItems: Item[] = JSON.parse(storedItems);
-         setAvailableItems(parsedItems.map(item => ({
-             value: item.id, // Use ID as value
-             label: item.name,
-             price: item.salePrice ?? 0 // Use salePrice
-         })));
-      } else {
-         // Fallback using mockItemsData
-         setAvailableItems(mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price })));
-      }
-    } catch (error) {
-      console.error("Error loading items from localStorage:", error);
-      // Fallback using mockItemsData
-      setAvailableItems(mockItemsData.map(item => ({ value: item.value, label: item.label, price: item.price })));
-    }
-  }, []); // Run only on mount
+  const [companyDetailsState] = useState(companyDetails);
 
 
   const form = useForm<QuotationFormValues>({
@@ -128,7 +92,7 @@ export default function NewQuotationPage() {
       client: searchParams.get('client') || undefined,
       quotationNumber: "",
       issueDate: undefined,
-      expiryDate: undefined, // Added expiry date default
+      expiryDate: undefined, 
       items: [{ description: "", quantity: 1, unitPrice: 0 }],
       notes: "This quotation is valid for 30 days.",
     },
@@ -143,7 +107,7 @@ export default function NewQuotationPage() {
     }
      if (!form.getValues("expiryDate")) {
       const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30); // Default expiry 30 days from now
+      futureDate.setDate(futureDate.getDate() + 30); 
       form.setValue("expiryDate", futureDate);
     }
     const clientParam = searchParams.get('client');
@@ -174,7 +138,6 @@ export default function NewQuotationPage() {
 
   function onSubmit(data: QuotationFormValues) {
     console.log("Sending Quotation:", { ...data, subtotal, taxAmount, total });
-    // In a real app, save this quotation data
     toast({
       title: "Quotation Sent (Mock)",
       description: `Quotation ${data.quotationNumber} for ${clients.find(c => c.value === data.client)?.label} has been 'sent'.`,
@@ -184,7 +147,6 @@ export default function NewQuotationPage() {
 
   const handleSaveDraft = () => {
     const data = form.getValues();
-    // Basic check if items exist before saving draft
     if (!data.items || data.items.length === 0 || data.items.every(item => !item.description)) {
          toast({
             title: "Cannot Save Draft",
@@ -194,7 +156,6 @@ export default function NewQuotationPage() {
         return;
     }
     console.log("Saving Draft:", { ...data, subtotal, taxAmount, total });
-    // In a real app, save this draft data
     toast({
       title: "Quotation Draft Saved (Mock)",
       description: `Quotation ${data.quotationNumber} has been 'saved' as a draft.`,
@@ -202,7 +163,6 @@ export default function NewQuotationPage() {
   };
 
   const handlePreview = () => {
-     // Trigger validation before previewing
     form.trigger().then(isValid => {
         if (!isValid) {
             toast({
@@ -213,14 +173,14 @@ export default function NewQuotationPage() {
             return;
         }
         const data = form.getValues();
-        const clientDetails = clients.find(c => c.value === data.client); // Find by value
+        const clientDetails = clients.find(c => c.value === data.client); 
         const fullPreviewData: PreviewData = {
             ...data,
             subtotal,
             taxAmount,
             total,
             clientDetails: clientDetails || undefined,
-            companyDetails: companyDetails
+            companyDetails: companyDetailsState
         };
         setPreviewData(fullPreviewData);
         setIsPreviewOpen(true);
@@ -229,14 +189,12 @@ export default function NewQuotationPage() {
   };
 
   const handleItemDescriptionChange = (index: number, value: string) => {
-    const selectedItem = availableItems.find(item => item.label.toLowerCase() === value.toLowerCase()); // Match by item.label (case-insensitive)
+    const selectedItem = availableItems.find(item => item.label.toLowerCase() === value.toLowerCase()); 
     if (selectedItem) {
       form.setValue(`items.${index}.description`, selectedItem.label);
       form.setValue(`items.${index}.unitPrice`, selectedItem.price);
     } else {
-       form.setValue(`items.${index}.description`, value); // Allow manual input
-       // Optionally clear price if not found, or keep manual price
-       // form.setValue(`items.${index}.unitPrice`, 0);
+       form.setValue(`items.${index}.description`, value); 
     }
   };
 
@@ -259,7 +217,6 @@ export default function NewQuotationPage() {
       <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-             {/* Client and Dates Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Create New Quotation</CardTitle>
@@ -281,7 +238,6 @@ export default function NewQuotationPage() {
                           </FormControl>
                           <SelectContent>
                             {clients.map((client) => (
-                              // Use client.value for SelectItem value
                               <SelectItem key={client.value} value={client.value}>
                                 {client.label}
                               </SelectItem>
@@ -363,7 +319,6 @@ export default function NewQuotationPage() {
               </CardContent>
             </Card>
 
-            {/* Items Card */}
              <Card>
               <CardHeader>
                 <CardTitle>Quotation Items</CardTitle>
@@ -392,9 +347,8 @@ export default function NewQuotationPage() {
                                     <Input
                                        placeholder="Item or Service description"
                                        {...field}
-                                       list={`datalist-items-${index}`} // Link to datalist
+                                       list={`datalist-items-${index}`} 
                                        onChange={(e) => {
-                                         // Update form state directly with input value
                                          handleItemDescriptionChange(index, e.target.value);
                                      }}
                                      />
@@ -470,7 +424,6 @@ export default function NewQuotationPage() {
               </CardFooter>
             </Card>
 
-            {/* Notes Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>
@@ -492,7 +445,6 @@ export default function NewQuotationPage() {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
               <Button type="button" variant="outline" onClick={handlePreview}>
@@ -509,7 +461,6 @@ export default function NewQuotationPage() {
         </Form>
       </div>
 
-      {/* Quotation Preview Sheet */}
       <Sheet open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <SheetContent className="w-full max-w-xl sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
@@ -519,7 +470,6 @@ export default function NewQuotationPage() {
           <div className="py-6 px-2">
             {previewData ? (
               <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
-                {/* Header */}
                 <div className="flex justify-between items-start mb-8">
                   <div>
                     <h2 className="text-2xl font-bold text-primary">{previewData.companyDetails.name}</h2>
@@ -535,7 +485,6 @@ export default function NewQuotationPage() {
                   </div>
                 </div>
 
-                {/* Client and Dates */}
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div>
                     <h4 className="font-semibold mb-1">Prepared For:</h4>
@@ -555,7 +504,6 @@ export default function NewQuotationPage() {
                   </div>
                 </div>
 
-                {/* Items Table */}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -577,7 +525,6 @@ export default function NewQuotationPage() {
                   </TableBody>
                 </Table>
 
-                {/* Totals */}
                 <div className="flex justify-end mt-6">
                   <div className="w-full max-w-xs space-y-2">
                     <div className="flex justify-between">
@@ -596,7 +543,6 @@ export default function NewQuotationPage() {
                   </div>
                 </div>
 
-                 {/* Notes */}
                 {previewData.notes && (
                   <div className="mt-8 pt-4 border-t">
                     <h4 className="font-semibold mb-1">Notes:</h4>
@@ -610,7 +556,6 @@ export default function NewQuotationPage() {
           </div>
            <SheetFooter className="p-4 border-t">
              <Button variant="outline" onClick={() => setIsPreviewOpen(false)}>Close Preview</Button>
-             {/* Add print button if needed */}
            </SheetFooter>
         </SheetContent>
       </Sheet>

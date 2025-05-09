@@ -36,9 +36,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-// Import Item interface but not the mock data
-import type { Item } from "@/data/mockData";
-import { createClient } from "@/lib/supabase/client"; // Import Supabase client
+// Import Item interface and initial mock data
+import { type Item, initialItems } from "@/data/mockData";
 
 const itemFormSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -54,45 +53,16 @@ const itemFormSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
 
-// No longer need initialItems with mock data
-
 export default function ItemsPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<Item[]>(initialItems);
+  const [isLoading, setIsLoading] = useState(false); // Simplified loading state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const { toast } = useToast();
-  const supabase = createClient();
-
-   // Load items from Supabase on mount
-   useEffect(() => {
-    const fetchItems = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('items') // Assume 'items' table exists
-          .select('*')
-          .order('name', { ascending: true }); // Adjust columns as needed
-
-        if (error) throw error;
-        setItems(data as Item[]); // Assuming Supabase data structure matches Item interface
-      } catch (error: any) {
-        console.error("Error loading items from Supabase:", error);
-        toast({
-          title: "Error Loading Items",
-          description: error.message || "Could not fetch item data.",
-          variant: "destructive",
-        });
-        setItems([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchItems();
-  }, [supabase, toast]); // Add dependencies
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
+    defaultValues: { name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 }
   });
 
   const itemType = form.watch("type");
@@ -100,63 +70,53 @@ export default function ItemsPage() {
 
   React.useEffect(() => {
     if (editingItem) {
-      form.reset(editingItem);
+      form.reset({
+        ...editingItem,
+        salePrice: editingItem.salePrice ?? 0,
+        purchasePrice: editingItem.purchasePrice ?? 0,
+        currentStock: editingItem.currentStock ?? 0,
+        lowStockThreshold: editingItem.lowStockThreshold ?? 0,
+      });
     } else {
       form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
     }
   }, [editingItem, form, isDialogOpen]);
 
   async function onSubmit(data: ItemFormValues) {
-    setIsLoading(true);
+    setIsLoading(true); // For visual feedback, though not async now
     try {
-        const itemData = { ...data }; // Copy data to avoid modifying original form values
+        const itemData = { ...data };
         if (!itemData.trackInventory) {
             itemData.currentStock = undefined;
             itemData.lowStockThreshold = undefined;
         }
 
-        // Prepare data for Supabase (handle undefined -> null)
-        const supabaseData = {
-            ...itemData,
-            salePrice: itemData.salePrice ?? null,
-            purchasePrice: itemData.purchasePrice ?? null,
-            currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
-            lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
-            sku: itemData.sku || null,
-            description: itemData.description || null,
-        };
-
         if (editingItem) {
-            // --- Editing Existing Item ---
-            const { data: updatedData, error } = await supabase
-                .from('items')
-                .update(supabaseData)
-                .eq('id', editingItem.id)
-                .select()
-                .single();
-
-            if (error) throw error;
-            if (updatedData) {
-                setItems(items.map(i => i.id === editingItem.id ? { ...updatedData } as Item : i));
-                toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
-            }
+            const updatedItem: Item = { 
+                ...editingItem, 
+                ...itemData,
+                salePrice: itemData.salePrice ?? null,
+                purchasePrice: itemData.purchasePrice ?? null,
+                currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
+                lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
+            };
+            setItems(items.map(i => i.id === editingItem.id ? updatedItem : i));
+            toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
             setIsDialogOpen(false);
             setEditingItem(null);
         } else {
-            // --- Adding New Item ---
-            const { data: insertedData, error } = await supabase
-                .from('items')
-                .insert(supabaseData)
-                .select()
-                .single();
-
-            if (error) throw error;
-            if (insertedData) {
-                setItems(prevItems => [...prevItems, insertedData as Item]);
-                toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
-                setIsDialogOpen(false); // Close dialog on success
-                form.reset(); // Reset form only after successful ADDITION
-            }
+            const newItem: Item = {
+                id: `item_${Date.now()}`,
+                ...itemData,
+                salePrice: itemData.salePrice ?? null,
+                purchasePrice: itemData.purchasePrice ?? null,
+                currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
+                lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
+            };
+            setItems(prevItems => [...prevItems, newItem]);
+            toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
+            setIsDialogOpen(false);
+            form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
         }
     } catch (error: any) {
         console.error("Error saving item:", error);
@@ -171,28 +131,8 @@ export default function ItemsPage() {
   }
 
   const handleDeleteItem = async (itemId: string, itemName: string) => {
-    // Optional: Add confirmation dialog
-    setIsLoading(true);
-    try {
-        const { error } = await supabase
-            .from('items')
-            .delete()
-            .eq('id', itemId);
-
-        if (error) throw error;
-
-        setItems(items.filter(i => i.id !== itemId));
-        toast({ title: "Item Deleted", description: `Item "${itemName}" has been deleted.`, variant: "destructive" });
-    } catch (error: any) {
-        console.error("Error deleting item:", error);
-        toast({
-            title: "Error Deleting Item",
-            description: error.message || "Could not delete item.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoading(false);
-    }
+    setItems(items.filter(i => i.id !== itemId));
+    toast({ title: "Item Deleted", description: `Item "${itemName}" has been deleted.`, variant: "destructive" });
   };
 
   const openEditDialog = (item: Item) => {
@@ -202,7 +142,7 @@ export default function ItemsPage() {
 
   const openNewDialog = () => {
     setEditingItem(null);
-    form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 }); // Ensure form is reset
+    form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
     setIsDialogOpen(true);
   };
 

@@ -37,9 +37,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-// Import Client interface and categories from mockData, but not the data itself
-import { clientCategories, type Client } from "@/data/mockData";
-import { createClient } from "@/lib/supabase/client"; // Import Supabase client
+// Import Client interface, categories, and initial mock data
+import { clientCategories, initialClients, type Client } from "@/data/mockData";
 
 const clientFormSchema = z.object({
   label: z.string().min(1, "Client name is required."),
@@ -53,52 +52,13 @@ const clientFormSchema = z.object({
 type ClientFormValues = z.infer<typeof clientFormSchema>;
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Separate state for form submission
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [isLoading, setIsLoading] = useState(false); // Simplified loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState("all-clients");
   const { toast } = useToast();
-  const supabase = createClient();
-
-  // Fetch clients from Supabase on mount
-  useEffect(() => {
-    const fetchClients = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('clients') // Assume 'clients' table exists
-          .select('*')
-          .order('label', { ascending: true }); // Adjust columns as needed
-
-        if (error) {
-          throw error;
-        }
-        // Map Supabase data to Client interface if needed, ensure 'value' is set
-        const formattedData = data.map(c => ({ ...c, value: c.id, label: c.label })) as Client[];
-        setClients(formattedData);
-      } catch (error: any) {
-        console.error("Error loading clients from Supabase:", error);
-        toast({
-          title: "Error Loading Clients",
-          description: error.message || "Could not fetch client data.",
-          variant: "destructive",
-        });
-        setClients([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchClients();
-  }, [toast, supabase]); // Add supabase and toast to dependency array
-
-  const form = useForm<ClientFormValues>({
-    resolver: zodResolver(clientFormSchema),
-    defaultValues: {
-       label: "", contactPerson: "", email: "", phone: "", address: "", category: ""
-    }
-  });
 
   // Effect for populating the EDIT form
   React.useEffect(() => {
@@ -112,7 +72,6 @@ export default function ClientsPage() {
         category: clientToEdit.category || "",
       });
     } else if (!isEditDialogOpen) {
-      // Reset form when closing edit dialog or switching to add tab
       form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
     }
   }, [clientToEdit, isEditDialogOpen, form]);
@@ -124,68 +83,47 @@ export default function ClientsPage() {
     }
   }, [activeTab, clientToEdit, form]);
 
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: {
+       label: "", contactPerson: "", email: "", phone: "", address: "", category: ""
+    }
+  });
+
   async function onSubmit(data: ClientFormValues) {
-    setIsSubmitting(true); // Indicate submission is in progress
+    setIsSubmitting(true);
     try {
         if (clientToEdit) {
             // --- Editing Existing Client ---
-            const { data: updatedData, error } = await supabase
-                .from('clients')
-                .update({
-                    label: data.label,
-                    contactPerson: data.contactPerson || null, // Use null for empty optional fields in DB
-                    email: data.email || null,
-                    phone: data.phone || null,
-                    address: data.address || null,
-                    category: data.category || null,
-                    // Update other relevant fields if needed
-                })
-                .eq('id', clientToEdit.id)
-                .select()
-                .single(); // Get the updated record back
-
-            if (error) throw error;
-
-            if (updatedData) {
-                 // Add 'value' field matching 'id' for consistency
-                const formattedUpdatedData = { ...updatedData, value: updatedData.id } as Client;
-                setClients(clients.map(c => c.id === clientToEdit.id ? formattedUpdatedData : c));
-                toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
-                setIsEditDialogOpen(false);
-                setClientToEdit(null);
-                // Form reset is handled by the useEffect for isEditDialogOpen
-            }
+            const updatedClient = { 
+              ...clientToEdit, 
+              ...data, 
+              value: clientToEdit.id, // Ensure value is preserved/updated
+              label: data.label // Ensure label is updated
+            };
+            setClients(clients.map(c => c.id === clientToEdit.id ? updatedClient : c));
+            toast({ title: "Client Updated", description: `Client "${data.label}" updated successfully.` });
+            setIsEditDialogOpen(false);
+            setClientToEdit(null);
         } else {
             // --- Adding New Client ---
-            const newClientData = {
+            const newClient: Client = {
+                id: `client_${Date.now()}`,
+                value: `client_${Date.now()}`,
                 label: data.label,
-                contactPerson: data.contactPerson || null,
-                email: data.email || null,
-                phone: data.phone || null,
-                address: data.address || null,
-                category: data.category || null,
-                // Default values for fields not in the form (align with DB schema)
-                // totalRevenue: 0, // Ensure this matches your DB schema (e.g., has a default)
-                status: data.category === "New Lead" ? "Lead" : "Active", // Ensure this matches your DB schema
-                // avatarUrl can be handled separately if needed
+                contactPerson: data.contactPerson || undefined,
+                email: data.email || undefined,
+                phone: data.phone || undefined,
+                address: data.address || undefined,
+                category: data.category || undefined,
+                totalRevenue: 0,
+                status: data.category === "New Lead" ? "Lead" : "Active",
+                avatarUrl: `https://picsum.photos/seed/${Date.now()}/40/40` // Generic placeholder
             };
-
-            const { data: insertedData, error } = await supabase
-                .from('clients')
-                .insert(newClientData)
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            if (insertedData) {
-                 // Add 'value' field matching 'id' for consistency
-                const formattedInsertedData = { ...insertedData, value: insertedData.id } as Client;
-                setClients(prevClients => [...prevClients, formattedInsertedData]); // Update local state
-                toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
-                form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" }); // Reset the 'Add New' form specifically
-                setActiveTab("all-clients"); // Optionally switch back to the list view after adding
-            }
+            setClients(prevClients => [...prevClients, newClient]);
+            toast({ title: "Client Added", description: `Client "${data.label}" added successfully.` });
+            form.reset({ label: "", contactPerson: "", email: "", phone: "", address: "", category: "" });
+            setActiveTab("all-clients");
         }
     } catch (error: any) {
         console.error("Error saving client:", error);
@@ -195,38 +133,19 @@ export default function ClientsPage() {
             variant: "destructive",
         });
     } finally {
-      setIsSubmitting(false); // Submission finished
+      setIsSubmitting(false);
     }
   }
 
   const handleDeleteClient = async (clientId: string, clientName: string) => {
     // Optional: Add a confirmation dialog before deleting
-    setIsLoading(true); // Use general loading for delete as it affects the list
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
-
-      if (error) throw error;
-
-      setClients(clients.filter(c => c.id !== clientId));
-      toast({ title: "Client Deleted", description: `Client "${clientName}" has been deleted.`, variant: "destructive" });
-    } catch (error: any) {
-      console.error("Error deleting client:", error);
-      toast({
-        title: "Error Deleting Client",
-        description: error.message || "Could not delete client.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    setClients(clients.filter(c => c.id !== clientId));
+    toast({ title: "Client Deleted", description: `Client "${clientName}" has been deleted.`, variant: "destructive" });
   };
 
   const openEditDialog = (client: Client) => {
     setClientToEdit(client);
-    setIsEditDialogOpen(true); // This will trigger the useEffect to populate the form
+    setIsEditDialogOpen(true);
   };
 
   const getStatusBadgeVariant = (status?: string | null) => {
@@ -238,7 +157,7 @@ export default function ClientsPage() {
       case "inactive":
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
       default:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"; // Default or unknown status
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
     }
   };
 
@@ -279,7 +198,6 @@ export default function ClientsPage() {
 
           <TabsContent value="all-clients">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {/* Summary Cards - Could fetch aggregate data from Supabase */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
@@ -296,7 +214,6 @@ export default function ClientsPage() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  {/* Aggregate revenue fetch needed */}
                   <div className="text-2xl font-bold">${isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0).toFixed(2)}</div>
                   {!isLoading && <p className="text-xs text-muted-foreground">Across all clients</p>}
                 </CardContent>
@@ -343,7 +260,7 @@ export default function ClientsPage() {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                              <AvatarImage src={client.avatarUrl ?? undefined} alt={client.label} data-ai-hint="company logo person" />
+                              <AvatarImage src={client.avatarUrl ?? undefined} alt={client.label} data-ai-hint="company logo person"/>
                               <AvatarFallback>{client.label.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
                             </Avatar>
                             {client.label}
@@ -368,13 +285,11 @@ export default function ClientsPage() {
                                 <Edit className="mr-2 h-4 w-4" /> Edit Client
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                {/* Ensure client.value exists and is correct ID */}
                                 <Link href={`/invoices/new?client=${client.value}`}>
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                {/* Ensure client.value exists and is correct ID */}
                                 <Link href={`/quotations/new?client=${client.value}`}>
                                   <PlusCircle className="mr-2 h-4 w-4" /> Create Quotation
                                 </Link>
@@ -456,7 +371,6 @@ export default function ClientsPage() {
               <DialogDescription>Update the client's details.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              {/* Point the edit dialog form to the same onSubmit handler */}
               <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                  <FormField control={form.control} name="label" render={({ field }) => (
                     <FormItem><FormLabel>Client Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
