@@ -20,20 +20,21 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   let hasConfigError = false;
+  let configErrorMessage = "Middleware Supabase Config Error: ";
 
   if (!supabaseUrl) {
-    console.error("Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is not set. Please check your .env file and ensure the Next.js server has been restarted.");
+    configErrorMessage += "NEXT_PUBLIC_SUPABASE_URL is not set. ";
     hasConfigError = true;
   } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("http")) {
-    console.error(`Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is invalid or a placeholder: '${supabaseUrl}'. Please check your .env file and restart the server.`);
+    configErrorMessage += `NEXT_PUBLIC_SUPABASE_URL is invalid or still a placeholder: '${supabaseUrl}'. `;
     hasConfigError = true;
   }
 
   if (!supabaseAnonKey) {
-    console.error("Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please check your .env file and ensure the Next.js server has been restarted.");
+    configErrorMessage += "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. ";
     hasConfigError = true;
   } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY" || supabaseAnonKey.length < 20) {
-     console.error(`Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Length: ${supabaseAnonKey.length}. Please check your .env file and restart the server.`);
+     configErrorMessage += `NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid (length: ${supabaseAnonKey.length}). `;
     hasConfigError = true;
   }
 
@@ -41,20 +42,23 @@ export async function middleware(request: NextRequest) {
       try {
         new URL(supabaseUrl);
       } catch (error: any) {
-         console.error(`Middleware Supabase Config Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}. Please ensure it's a valid URL (e.g., https://your-project-id.supabase.co) and restart the server.`);
+         configErrorMessage += `Invalid Supabase URL format in NEXT_PUBLIC_SUPABASE_URL: '${supabaseUrl}'. Error: ${error.message}. `;
          hasConfigError = true;
       }
   }
 
   if (hasConfigError) {
-      console.warn("Middleware: Supabase client initialization skipped due to configuration errors. The application might not function correctly. Please check server logs for details, ensure .env variables are correct, and that the server was restarted.");
-      // Allow request to proceed to potentially show a more user-friendly error page or allow public routes.
-      // Forcing an error response here might break public parts of the site or error display mechanisms.
+      configErrorMessage += "Please check your .env file, ensure all Supabase variables are correct, and that the Next.js server has been restarted.";
+      console.error(configErrorMessage); // Log the detailed error
+      // Allow request to proceed. App-level checks will handle if Supabase client fails.
+      // Throwing an error here or returning a different response might mask the root cause or break public routes.
+      // Consider returning a specific error response if this middleware is critical for all routes:
+      // return new NextResponse(JSON.stringify({ error: "Supabase configuration error in middleware. Check server logs." }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       return response; 
   }
 
   try {
-    const supabase = createServerClient(supabaseUrl!, supabaseAnonKey!, {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, { // supabaseUrl and supabaseAnonKey are validated to be non-null and correct format if hasConfigError is false
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
@@ -62,27 +66,27 @@ export async function middleware(request: NextRequest) {
         set(name: string, value: string, options: CookieOptions) {
           try {
             request.cookies.set({ name, value, ...options });
-            // Re-create response to apply updated cookies
-            response = NextResponse.next({ request: { headers: request.headers } });
+            response = NextResponse.next({ request: { headers: request.headers } }); // Re-create response with new cookies
             response.cookies.set({ name, value, ...options });
           } catch (e) { 
-            // Ignore errors if `set` is called from a Server Component - Supabase handles this.
+            // Errors here can happen if `set` is called from a Server Component.
+            // These can often be ignored if middleware is used to refresh user sessions.
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             request.cookies.set({ name, value: '', ...options });
-            // Re-create response to apply updated cookies
-            response = NextResponse.next({ request: { headers: request.headers } });
+            response = NextResponse.next({ request: { headers: request.headers } }); // Re-create response with new cookies
             response.cookies.set({ name, value: '', ...options });
           } catch (e) {
-            // Ignore errors if `remove` is called from a Server Component - Supabase handles this.
+            // Errors here can happen if `remove` is called from a Server Component.
            }
         },
       },
     });
 
-    // Attempt to refresh the session
+    // Attempt to refresh the session.
+    // This will update the cookies if necessary.
     await supabase.auth.getSession();
 
   } catch (e: any) {
