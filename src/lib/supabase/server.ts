@@ -32,7 +32,7 @@ export function createClient() {
   }
 
   try {
-    new URL(supabaseUrl);
+    new URL(supabaseUrl!); // Non-null assertion is safe due to checks above
   } catch (error: any) {
     console.error(`SERVER Supabase Config Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}. Please ensure it's a valid URL (e.g., https://your-project-id.supabase.co) and restart the server.`);
     throw new Error(`ConfigurationError: Supabase URL format invalid. Check server logs for details.`);

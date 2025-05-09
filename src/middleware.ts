@@ -22,18 +22,18 @@ export async function middleware(request: NextRequest) {
   let hasConfigError = false;
 
   if (!supabaseUrl) {
-    console.error("Middleware Critical Error: Missing environment variable NEXT_PUBLIC_SUPABASE_URL. Ensure it's set in your .env file and the server was restarted.");
+    console.error("Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is not set. Please check your .env file and ensure the Next.js server has been restarted.");
     hasConfigError = true;
   } else if (supabaseUrl === "YOUR_SUPABASE_URL" || supabaseUrl.length < 10 || !supabaseUrl.startsWith("http")) {
-    console.error(`Middleware Critical Error: NEXT_PUBLIC_SUPABASE_URL is invalid ('${supabaseUrl}'). Please update your .env file with your actual Supabase project URL.`);
+    console.error(`Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_URL is invalid or a placeholder: '${supabaseUrl}'. Please check your .env file and restart the server.`);
     hasConfigError = true;
   }
 
   if (!supabaseAnonKey) {
-    console.error("Middleware Critical Error: Missing environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure it's set in your .env file and the server was restarted.");
+    console.error("Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please check your .env file and ensure the Next.js server has been restarted.");
     hasConfigError = true;
   } else if (supabaseAnonKey === "YOUR_SUPABASE_ANON_KEY" || supabaseAnonKey.length < 20) {
-     console.error(`Middleware Critical Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Please update your .env file.`);
+     console.error(`Middleware Supabase Config Error: NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be a placeholder or invalid. Length: ${supabaseAnonKey.length}. Please check your .env file and restart the server.`);
     hasConfigError = true;
   }
 
@@ -41,14 +41,16 @@ export async function middleware(request: NextRequest) {
       try {
         new URL(supabaseUrl);
       } catch (error: any) {
-         console.error(`Middleware Critical Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}`);
+         console.error(`Middleware Supabase Config Error: Invalid Supabase URL format: ${supabaseUrl}. Error: ${error.message}. Please ensure it's a valid URL (e.g., https://your-project-id.supabase.co) and restart the server.`);
          hasConfigError = true;
       }
   }
 
   if (hasConfigError) {
-      console.warn("Middleware: Supabase client initialization skipped due to configuration errors. The application might not function correctly. Please check server logs for details and ensure .env variables are correct and the server was restarted.");
-      return response; // Pass through, don't return JSON error
+      console.warn("Middleware: Supabase client initialization skipped due to configuration errors. The application might not function correctly. Please check server logs for details, ensure .env variables are correct, and that the server was restarted.");
+      // Allow request to proceed to potentially show a more user-friendly error page or allow public routes.
+      // Forcing an error response here might break public parts of the site or error display mechanisms.
+      return response; 
   }
 
   try {
@@ -80,11 +82,13 @@ export async function middleware(request: NextRequest) {
       },
     });
 
+    // Attempt to refresh the session
     await supabase.auth.getSession();
+
   } catch (e: any) {
-    console.error("Middleware Exception during Supabase client initialization or getSession:", e.message);
     // Log the error but still pass the request through.
-    // Subsequent page-level auth checks should handle failures.
+    // Subsequent page-level auth checks or Supabase client usage will handle failures.
+    console.error("Middleware Exception during Supabase client operation:", e.message);
   }
 
   return response;
