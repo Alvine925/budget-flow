@@ -1,0 +1,53 @@
+[33m7fe60fc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m git commit -m "Fix: move useSearchParams to client component"
+[33m6d7fb2b[m I’m getting a build error on the page /quotations/new because you are using useSearchParams() in a Server Component. Fix the error by:
+[33m465c124[m The `npm install` command failed in my project. Analyze the following error output and fix it, potentially involving changes to `package.json`.
+[33m2f3812c[m fix the errors in the site
+[33m9e5833b[m remove supabase from the site
+[33m4019e3c[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33maaee6c6[m why dont you fix the errors once and for all
+[33mb74ca84[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m908556c[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m221242a[m some page are showing errors,fix them please
+[33m7c91352[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mbd753fb[m fix the errors in the site
+[33md6f1c40[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m6cb6ce5[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mff1f8e0[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mf044bd6[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33md99e2d5[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mc3ca689[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m213fedf[m i have added supabase credentials to the site now ensure the site is able to add new clients,services,and procducts
+[33m211358e[m fix this error TypeError: Invalid URL     at new SupabaseClient (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/node_modules_ffe1bb09._.js:15126:41)     at createClient (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/node_modules_ffe1bb09._.js:15319:12)     at createBrowserClient (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/node_modules_ffe1bb09._.js:16056:227)     at createClient (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/src_02632462._.js:1883:213)     at ClientsPage (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/src_02632462._.js:1972:174)     at ClientPageRoot (https://6000-idx-studio-1746561104440.cluster-axf5tvtfjjfekvhwxwkkkzsk2y.cloudworkstations.dev/_next/static/chunks/node_modules_next_dist_1a6ee436._.js:2053:50)
+[33m0e75ecb[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mf58efab[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33me2b76bd[m The `npm install` command failed in my project. Analyze the following error output and fix it, potentially involving changes to `package.json`.
+[33m0c0e15b[m configure the site so that all the new clients and services are automatically saved
+[33m0613fee[m ensure that all clients that are add are also reflect in the quotations and and the invoices page
+[33m460a1a5[m when adding new clients,add another tab in the client page which allows users to add the profile for the new clients,all the clients should also be intergared into the invoice and quotation page whenever they are added
+[33m134cef1[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m409f614[m the preview invoice button should be able to generate a preview of the invoice in the side bar of the invoice page,dont interfear with anything else
+[33mcd7afa0[m without interfearing with anything else,the invoice items section in the invoices page should allow users to add new invoice items
+[33mac9c1f9[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m935a9a2[m When creating an invoice or a quotation,ensure users are able to to preview,save  and send quotations and invoices to clients,dont interfear with anything else
+[33m242a32f[m the templates page should display the templates for professional invoices and quotations,dont interfear with any thing else
+[33mee77d45[m in the invoices page i want you add a settings button Without interfearing with anything else,i want to add a section for invoice templates and  quotation templates that the users can choose from,when chosen the sytem should be able to use the template when generating an invoice or a quote
+[33m5f6a16c[m without interfearing with anything else,i want you to enable users to upload their company logo under general settings
+[33m6374918[m ensure the site has all the currencies in the world
+[33m442d859[m increase the currency to 100,include all african country currencies
+[33m28fc60e[m ensure the site supports atleast 50 currencies
+[33m7d0564e[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m5c77e47[m Error: A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[33m672b792[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33meea94ff[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mdfbd4ed[m ensure all the sections in the settings page are working
+[33m6fab0a0[m the export all button should be able to download all the reports at once
+[33m334572d[m ensure the export pdf functionality is working appropriately,do not interfear with anything else
+[33mbc824a9[m change the coming soon buttons to view report in the cash flow statement,client report and inventory summary
+[33m6318307[m ensure all the various reports are working and have content in them
+[33mdf916a2[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mc2c723b[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m962574b[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m97c6bb4[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m6ea42b0[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33m88f178d[m I see this error with the app, reported by NextJS, please fix it. The error is reported as HTML but presented visually to the user).
+[33mee089f6[m initial scaffold
