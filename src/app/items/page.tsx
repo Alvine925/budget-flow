@@ -38,86 +38,150 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from "@/hooks/use-toast";
 // Import Item interface and initial mock data
 import { type Item, initialItems } from "@/data/mockData";
+import { v4 as uuidv4 } from 'uuid';
+import { createClient } from "@/lib/supabase/client";
 
 const itemFormSchema = z.object({
   name: z.string().min(1, "Item name is required."),
   sku: z.string().optional(),
   type: z.enum(["service", "stock_item"], { required_error: "Item type is required."}),
   description: z.string().optional(),
-  salePrice: z.coerce.number().min(0, "Sale price must be non-negative.").optional(),
-  purchasePrice: z.coerce.number().min(0, "Purchase price must be non-negative.").optional(),
+  salePrice: z.coerce.number().min(0, "Sale price must be non-negative.").nullable().optional(),
+  purchasePrice: z.coerce.number().min(0, "Purchase price must be non-negative.").nullable().optional(),
   trackInventory: z.boolean().default(false),
-  currentStock: z.coerce.number().min(0, "Stock must be non-negative.").optional(),
-  lowStockThreshold: z.coerce.number().min(0, "Threshold must be non-negative.").optional(),
+  currentStock: z.coerce.number().min(0, "Stock must be non-negative.").nullable().optional(),
+  lowStockThreshold: z.coerce.number().min(0, "Threshold must be non-negative.").nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === "stock_item" && data.trackInventory) {
+    if (data.currentStock == null) { // Checks for undefined or null
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Current stock is required when tracking inventory.",
+        path: ["currentStock"],
+      });
+    }
+    if (data.lowStockThreshold == null) { // Checks for undefined or null
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Low stock threshold is required when tracking inventory.",
+        path: ["lowStockThreshold"],
+      });
+    }
+  }
 });
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
 
+const defaultFormValues: ItemFormValues = { 
+  name: "", 
+  type: "service", 
+  salePrice: null, 
+  purchasePrice: null, 
+  trackInventory: false, 
+  currentStock: null, 
+  lowStockThreshold: null, 
+  sku: undefined, 
+  description: undefined 
+};
+
+
 export default function ItemsPage() {
+  const supabase = createClient();
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [isLoading, setIsLoading] = useState(false); // Simplified loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const { toast } = useToast();
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
-    defaultValues: { name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 }
+    defaultValues: defaultFormValues
   });
 
   const itemType = form.watch("type");
   const trackInventory = form.watch("trackInventory");
 
+  useEffect(() => {
+    async function fetchItems() {
+      setIsLoading(true);
+      const { data, error } = await supabase.from('items').select('*');
+      if (error) {
+        console.error('Error fetching items:', error);
+        toast({ title: "Error", description: "Could not fetch items.", variant: "destructive" });
+        setItems(initialItems); // Fallback to initial mock data
+      } else {
+        setItems(data || []);
+      }
+      setIsLoading(false);
+    }
+    fetchItems();
+  }, [supabase, toast]);
+
+
   React.useEffect(() => {
-    if (editingItem) {
-      form.reset({
-        ...editingItem,
-        salePrice: editingItem.salePrice ?? 0,
-        purchasePrice: editingItem.purchasePrice ?? 0,
-        currentStock: editingItem.currentStock ?? 0,
-        lowStockThreshold: editingItem.lowStockThreshold ?? 0,
-      });
-    } else {
-      form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
+    if (isDialogOpen) {
+      if (editingItem) {
+        form.reset({
+          name: editingItem.name,
+          sku: editingItem.sku || undefined,
+          type: editingItem.type,
+          description: editingItem.description || undefined,
+          salePrice: editingItem.salePrice,
+          purchasePrice: editingItem.purchasePrice,
+          trackInventory: editingItem.trackInventory || false,
+          currentStock: editingItem.currentStock,
+          lowStockThreshold: editingItem.lowStockThreshold,
+        });
+      } else {
+        form.reset(defaultFormValues);
+      }
     }
   }, [editingItem, form, isDialogOpen]);
 
   async function onSubmit(data: ItemFormValues) {
-    setIsLoading(true); // For visual feedback, though not async now
+    setIsSubmitting(true);
     try {
-        const itemData = { ...data };
-        if (!itemData.trackInventory) {
-            itemData.currentStock = undefined;
-            itemData.lowStockThreshold = undefined;
-        }
+        const itemDataToSave = { 
+            ...data,
+            // Ensure optional fields that should be null if not provided are handled
+            sku: data.sku || null,
+            description: data.description || null,
+            salePrice: data.salePrice, // Already number | null | undefined from schema
+            purchasePrice: data.purchasePrice, // Already number | null | undefined from schema
+            currentStock: data.trackInventory ? (data.currentStock ?? 0) : null,
+            lowStockThreshold: data.trackInventory ? (data.lowStockThreshold ?? 0) : null,
+        };
+
 
         if (editingItem) {
-            const updatedItem: Item = { 
-                ...editingItem, 
-                ...itemData,
-                salePrice: itemData.salePrice ?? null,
-                purchasePrice: itemData.purchasePrice ?? null,
-                currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
-                lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
-            };
-            setItems(items.map(i => i.id === editingItem.id ? updatedItem : i));
+            const { data: updatedData, error } = await supabase
+                .from('items')
+                .update(itemDataToSave)
+                .eq('id', editingItem.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setItems(items.map(i => i.id === editingItem.id ? updatedData : i));
             toast({ title: "Item Updated", description: `Item "${data.name}" updated successfully.` });
-            setIsDialogOpen(false);
-            setEditingItem(null);
         } else {
-            const newItem: Item = {
-                id: `item_${Date.now()}`,
-                ...itemData,
-                salePrice: itemData.salePrice ?? null,
-                purchasePrice: itemData.purchasePrice ?? null,
-                currentStock: itemData.trackInventory ? (itemData.currentStock ?? 0) : null,
-                lowStockThreshold: itemData.trackInventory ? (itemData.lowStockThreshold ?? 0) : null,
-            };
-            setItems(prevItems => [...prevItems, newItem]);
+            const newItemWithId = { ...itemDataToSave, id: uuidv4() };
+            const { data: insertedData, error } = await supabase
+                .from('items')
+                .insert(newItemWithId)
+                .select()
+                .single();
+            
+            if (error) throw error;
+
+            setItems(prevItems => [...prevItems, insertedData]);
             toast({ title: "Item Added", description: `Item "${data.name}" added successfully.` });
-            setIsDialogOpen(false);
-            form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
         }
+        setIsDialogOpen(false);
+        setEditingItem(null);
+        form.reset(defaultFormValues); // Reset to clean defaults
     } catch (error: any) {
         console.error("Error saving item:", error);
         toast({
@@ -126,13 +190,22 @@ export default function ItemsPage() {
             variant: "destructive",
         });
     } finally {
-        setIsLoading(false);
+        setIsSubmitting(false);
     }
   }
 
   const handleDeleteItem = async (itemId: string, itemName: string) => {
-    setItems(items.filter(i => i.id !== itemId));
-    toast({ title: "Item Deleted", description: `Item "${itemName}" has been deleted.`, variant: "destructive" });
+    setIsLoading(true); // Indicate loading for delete operation
+    const { error } = await supabase.from('items').delete().eq('id', itemId);
+    setIsLoading(false);
+
+    if (error) {
+        console.error('Error deleting item:', error);
+        toast({ title: "Error Deleting Item", description: error.message, variant: "destructive" });
+    } else {
+        setItems(items.filter(i => i.id !== itemId));
+        toast({ title: "Item Deleted", description: `Item "${itemName}" has been deleted.`, variant: "destructive" });
+    }
   };
 
   const openEditDialog = (item: Item) => {
@@ -142,7 +215,7 @@ export default function ItemsPage() {
 
   const openNewDialog = () => {
     setEditingItem(null);
-    form.reset({ name: "", sku: "", type: "service", description: "", salePrice: 0, purchasePrice: 0, trackInventory: false, currentStock: 0, lowStockThreshold: 0 });
+    // form.reset() is now handled by useEffect reacting to editingItem & isDialogOpen
     setIsDialogOpen(true);
   };
 
@@ -210,10 +283,10 @@ export default function ItemsPage() {
                         {item.type === "service" ? "Service" : "Stock Item"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{item.salePrice ? `$${item.salePrice.toFixed(2)}` : "N/A"}</TableCell>
+                    <TableCell className="text-right">{item.salePrice != null ? `$${item.salePrice.toFixed(2)}` : "N/A"}</TableCell>
                     <TableCell className="text-right">
                       {item.trackInventory ? (
-                        <span className={item.currentStock !== undefined && item.currentStock !== null && item.lowStockThreshold !== undefined && item.lowStockThreshold !== null && item.currentStock <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
+                        <span className={item.currentStock != null && item.lowStockThreshold != null && item.currentStock <= item.lowStockThreshold ? "text-destructive font-semibold" : ""}>
                             {item.currentStock ?? 0}
                         </span>
                        ) : "N/A"}
@@ -273,7 +346,7 @@ export default function ItemsPage() {
                 )}/>
                 <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem><FormLabel>Type *</FormLabel>
-                        <Select onValueChange={(value) => { field.onChange(value); if(value === "service") form.setValue("trackInventory", false); }} defaultValue={field.value}>
+                        <Select onValueChange={(value) => { field.onChange(value); if(value === "service") form.setValue("trackInventory", false); }} value={field.value}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="service">Service</SelectItem><SelectItem value="stock_item">Stock Item</SelectItem></SelectContent>
                         </Select><FormMessage /></FormItem>
@@ -286,10 +359,10 @@ export default function ItemsPage() {
                 )}/>
                  <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="salePrice" render={({ field }) => (
-                        <FormItem><FormLabel>Sale Price (Optional)</FormLabel><FormControl><Input type="number" {...field} step="0.01" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Sale Price (Optional)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? null : +e.target.value)} value={field.value ?? ""} step="0.01" /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="purchasePrice" render={({ field }) => (
-                        <FormItem><FormLabel>Purchase Price (Optional)</FormLabel><FormControl><Input type="number" {...field} step="0.01" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Purchase Price (Optional)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? null : +e.target.value)} value={field.value ?? ""} step="0.01" /></FormControl><FormMessage /></FormItem>
                     )}/>
                  </div>
 
@@ -308,17 +381,17 @@ export default function ItemsPage() {
                 {itemType === "stock_item" && trackInventory && (
                     <div className="grid grid-cols-2 gap-4 mt-4 border-t pt-4">
                         <FormField control={form.control} name="currentStock" render={({ field }) => (
-                            <FormItem><FormLabel>Current Stock</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Current Stock</FormLabel><FormControl><Input type="number" min="0" {...field} onChange={e => field.onChange(e.target.value === '' ? null : +e.target.value)} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
                         )}/>
                         <FormField control={form.control} name="lowStockThreshold" render={({ field }) => (
-                            <FormItem><FormLabel>Low Stock Threshold</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Low Stock Threshold</FormLabel><FormControl><Input type="number" min="0" {...field} onChange={e => field.onChange(e.target.value === '' ? null : +e.target.value)} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
                         )}/>
                     </div>
                 )}
                 <DialogFooter className="pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>Cancel</Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting || isLoading}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {editingItem ? "Save Changes" : "Add Item/Service"}
                   </Button>
                 </DialogFooter>
